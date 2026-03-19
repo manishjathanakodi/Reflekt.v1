@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reflekt — Complete UI All Screens</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Outfit:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ─── DESIGN TOKENS ─────────────────────────────────── */
+:root {
+  /* Dark shell */
+  --bg-dark:     #0e1117;
+  --nav-dark:    #161b27;
+  /* Light shell (ONLY background + nav change) */
+  --bg-light:    #f0ebe1;
+  --nav-light:   #e8e1d4;
+  /* Cards/surfaces — SAME in both modes */
+  --card:        #1a2030;
+  --s2:          #1e2538;
+  --s3:          #252d44;
+  --border:      rgba(255,255,255,0.08);
+  /* Text on cards — SAME in both modes */
+  --ct:          #eeeae2;
+  --cm:          rgba(238,234,226,0.5);
+  --cd:          rgba(238,234,226,0.25);
+  /* Text on dark shell */
+  --st-dark:     #eeeae2;
+  --sm-dark:     rgba(238,234,226,0.5);
+  /* Text on light shell */
+  --st-light:    #2c2318;
+  --sm-light:    rgba(44,35,24,0.5);
+  /* Accent colours */
+  --gold:        #c9a96e;
+  --gold-s:      rgba(201,169,110,0.15);
+  --gold-on:     #1a1208;
+  --sage:        #6fa880;
+  --sage-s:      rgba(111,168,128,0.15);
+  --blush:       #d4756a;
+  --blush-s:     rgba(212,117,106,0.15);
+  --sky:         #5f9fc4;
+  --sky-s:       rgba(95,159,196,0.15);
+  --lav:         #9b85c8;
+  --lav-s:       rgba(155,133,200,0.15);
+  --amber:       #e8a84d;
+  --amber-s:     rgba(232,168,77,0.15);
+  --teal:        #4db8a4;
+  --r:           22px;
+  --rs:          14px;
+  --nav-h:       68px;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+body {
+  background: #07090f;
+  font-family: 'Outfit', sans-serif;
+  padding: 0 0 60px;
+}
+
+/* ─── PAGE HEADER ─────────────────────────────────── */
+.pg-hd {
+  background: linear-gradient(135deg,#0d1420,#121c2e);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  padding: 28px 40px 22px;
+  position: sticky; top:0; z-index:200;
+}
+.pg-title { font-family:'Lora',serif; font-size:22px; color:#eeeae2; margin-bottom:4px; }
+.pg-sub   { font-size:12px; color:rgba(238,234,226,0.45); line-height:1.5; }
+.pg-rule  {
+  margin-top:14px; display:flex; gap:24px; flex-wrap:wrap;
+  padding:12px 16px; background:rgba(201,169,110,0.07);
+  border:1px solid rgba(201,169,110,0.2); border-radius:10px;
+}
+.rule-item { display:flex; align-items:flex-start; gap:6px; font-size:11px; line-height:1.5; }
+.rule-dot  { width:8px; height:8px; border-radius:50%; flex-shrink:0; margin-top:2px; }
+
+/* ─── SECTION BANNER ─────────────────────────────── */
+.sec-banner {
+  background: rgba(255,255,255,0.02);
+  border-top:1px solid rgba(255,255,255,0.04);
+  border-bottom:1px solid rgba(255,255,255,0.04);
+  padding: 11px 40px;
+  display:flex; align-items:center; gap:10px;
+  position:sticky; top:135px; z-index:100;
+}
+.sec-n { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--gold); }
+.sec-t { font-size:13px; font-weight:600; color:#eeeae2; }
+.sec-d { font-size:11px; color:rgba(238,234,226,0.32); margin-left:auto; }
+
+/* ─── GRID ────────────────────────────────────────── */
+.grid { display:flex; flex-wrap:wrap; gap:36px; padding:32px 40px; align-items:flex-start; }
+
+/* ─── PHONE SHELL ─────────────────────────────────── */
+.phone-wrap { display:flex; flex-direction:column; align-items:center; }
+.mode-tag   { font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.07em; margin-bottom:7px; }
+.dark-tag   { color:rgba(201,169,110,0.65); }
+.light-tag  { color:rgba(240,235,225,0.45); }
+
+.phone {
+  width:375px; height:812px;
+  border-radius:50px; overflow:hidden;
+  position:relative; flex-shrink:0;
+  border:1.5px solid;
+}
+.phone.dark  { background:var(--bg-dark);  border-color:rgba(255,255,255,0.1);  box-shadow:0 40px 100px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.06); }
+.phone.light { background:var(--bg-light); border-color:rgba(140,120,90,0.35);  box-shadow:0 30px 80px rgba(80,60,30,0.22), inset 0 1px 0 rgba(255,255,255,0.4); }
+
+.phone-label { margin-top:9px; font-size:10px; color:rgba(255,255,255,0.2); font-family:'JetBrains Mono',monospace; text-align:center; letter-spacing:0.05em; }
+
+/* ─── LAYOUT ─────────────────────────────────────── */
+.screen-body { display:flex; flex-direction:column; height:calc(812px - 48px); }
+.sb    { height:48px; padding:13px 24px 0; display:flex; justify-content:space-between; align-items:center; flex-shrink:0; }
+.sb-t  { font-size:14px; font-weight:600; }
+.sb-i  { display:flex; gap:5px; align-items:center; font-size:11px; }
+.dark  .sb-t { color:var(--st-dark); }
+.dark  .sb-i { color:var(--sm-dark); }
+.light .sb-t { color:var(--st-light); }
+.light .sb-i { color:var(--sm-light); }
+/* sb background matches shell */
+.dark  .sb { background:var(--bg-dark); }
+.light .sb { background:var(--bg-light); }
+
+.sc { flex:1; overflow-y:auto; overflow-x:hidden; }
+.sc::-webkit-scrollbar { display:none; }
+.dark  .sc { background:var(--bg-dark); }
+.light .sc { background:var(--bg-light); }
+
+/* ─── BOTTOM NAV ─────────────────────────────────── */
+.bnav { height:var(--nav-h); border-top:1px solid; display:flex; align-items:center; justify-content:space-around; padding:0 3px 8px; flex-shrink:0; }
+.dark  .bnav { background:var(--nav-dark); border-color:var(--border); }
+.light .bnav { background:var(--nav-light); border-color:rgba(140,120,90,0.2); box-shadow:0 -3px 12px rgba(80,60,30,0.08); }
+.ni { display:flex; flex-direction:column; align-items:center; gap:2px; padding:5px 7px; border-radius:13px; cursor:pointer; }
+.ni.act { background:var(--gold-s); }
+.ni-ic { font-size:19px; line-height:1; }
+.ni-lb { font-size:8px; font-weight:500; }
+.dark  .ni-lb { color:var(--sm-dark); }
+.light .ni-lb { color:var(--sm-light); }
+.ni.act .ni-lb { color:var(--gold); }
+
+/* ─── SHELL TEXT (headings, dates directly on background) ── */
+.dark  .sh-title { font-family:'Lora',serif; color:var(--st-dark); }
+.light .sh-title { font-family:'Lora',serif; color:var(--st-light); }
+.dark  .sh-muted { color:var(--sm-dark); }
+.light .sh-muted { color:var(--sm-light); }
+.dark  .sh-dim   { color:var(--cd); }
+.light .sh-dim   { color:rgba(44,35,24,0.3); }
+.dark  .sh-link  { color:var(--gold); }
+.light .sh-link  { color:var(--gold); }
+
+/* ─── CARDS — always dark ─────────────────────────── */
+.card  { background:var(--card);  border:1px solid var(--border); border-radius:var(--rs); }
+.surf2 { background:var(--s2);    border:1px solid var(--border); border-radius:var(--rs); }
+.surf3 { background:var(--s3);    border:1px solid var(--border); border-radius:var(--rs); }
+.ct    { color:var(--ct); }
+.cm    { color:var(--cm); }
+.cd    { color:var(--cd); }
+/* Badges */
+.b-happy   { background:var(--sage-s);  color:var(--sage); }
+.b-sad     { background:var(--sky-s);   color:var(--sky); }
+.b-anxious { background:var(--lav-s);   color:var(--lav); }
+.b-angry   { background:var(--blush-s); color:var(--blush); }
+.b-neutral { background:var(--amber-s); color:var(--amber); }
+.badge { display:inline-flex; align-items:center; gap:3px; padding:2px 8px; border-radius:50px; font-size:10px; font-weight:600; }
+.ai-tag { background:var(--gold-s); color:var(--gold); font-size:9px; font-weight:700; padding:2px 7px; border-radius:50px; }
+.streak { background:rgba(232,168,77,0.18); color:var(--amber); font-size:9px; font-weight:700; padding:2px 7px; border-radius:50px; display:inline-flex; align-items:center; gap:3px; }
+
+/* ─── PROGRESS DOT STRIP ─────────────────────────── */
+.dots { display:flex; gap:3px; padding:0 13px 10px; }
+.dot  { flex:1; height:4px; border-radius:2px; }
+
+/* ─── COMMON COMPONENTS ──────────────────────────── */
+.tab-row { display:flex; gap:0; background:var(--s2); border-radius:13px; padding:4px; }
+.tab-btn { flex:1; padding:7px; border-radius:9px; font-size:11px; font-weight:600; text-align:center; color:var(--cm); cursor:pointer; }
+.tab-btn.a { background:var(--gold); color:var(--gold-on); }
+.fab { position:absolute; bottom:80px; right:20px; width:46px; height:46px; border-radius:16px; background:var(--gold); display:flex; align-items:center; justify-content:center; font-size:20px; color:var(--gold-on); font-weight:700; box-shadow:0 5px 18px rgba(201,169,110,0.35); z-index:10; }
+.prog-bar { height:5px; background:var(--s3); border-radius:3px; overflow:hidden; }
+.prog-fill { height:100%; border-radius:3px; }
+.check-done { width:30px; height:30px; border-radius:50%; background:var(--sage); display:flex; align-items:center; justify-content:center; font-size:12px; color:#0d1f14; flex-shrink:0; }
+.check-todo { width:30px; height:30px; border-radius:50%; border:2px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--cd); flex-shrink:0; }
+
+/* ─── ANIMATIONS ─────────────────────────────────── */
+@keyframes breathe { 0%,100%{transform:scale(1);opacity:0.5;} 50%{transform:scale(1.15);opacity:1;} }
+@keyframes pulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.05);} }
+</style>
+</head>
+<body>
+
+<!-- PAGE HEADER -->
+<div class="pg-hd">
+  <div class="pg-title">Reflekt — Complete UI Reference · All Screens</div>
+  <div class="pg-sub">Dark mode: full dark shell + dark cards. &nbsp;|&nbsp; Light mode: warm parchment shell + same dark cards/inputs/text boxes.</div>
+  <div class="pg-rule">
+    <div class="rule-item"><div class="rule-dot" style="background:#c9a96e;"></div><span style="color:#c9a96e;">CHANGES in light:</span>&nbsp;<span style="color:rgba(238,234,226,0.55);">Screen background (#F0EBE1), Nav bar (#E8E1D4), Status bar bg, Heading text on background</span></div>
+    <div class="rule-item"><div class="rule-dot" style="background:#6fa880;"></div><span style="color:#6fa880;">STAYS DARK always:</span>&nbsp;<span style="color:rgba(238,234,226,0.55);">All cards (#1A2030), Inputs (#1E2538), AI bubbles, Settings items, Text inside cards</span></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SECTION A — ONBOARDING
+══════════════════════════════════════════ -->
+<div class="sec-banner"><span class="sec-n">A</span><span class="sec-t">Onboarding & Permissions</span><span class="sec-d">SplashScreen · DemographicsScreen · PermissionsScreen</span></div>
+<div class="grid">
+
+  <!-- SPLASH DARK -->
+  <div class="phone-wrap">
+    <div class="mode-tag dark-tag">◼ DARK</div>
+    <div class="phone dark">
+      <div class="sb"><span class="sb-t">9:41</span><div class="sb-i"><span>●●●</span><span>🔋</span></div></div>
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:32px;background:radial-gradient(ellipse at 30% 20%,rgba(201,169,110,0.12),transparent 55%),var(--bg-dark);">
+        <div style="width:80px;height:80px;background:var(--s2);border-radius:28px;border:1px solid rgba(201,169,110,0.28);display:flex;align-items:center;justify-content:center;font-size:34px;margin-bottom:24px;box-shadow:0 0 0 8px rgba(201,169,110,0.06);">📖</div>
+        <div class="sh-title" style="font-size:36px;margin-bottom:8px;">Reflekt</div>
+        <div class="sh-muted" style="font-size:13px;text-align:center;max-width:220px;line-height:1.6;margin-bottom:44px;">Your private space to think, feel, and understand yourself better.</div>
+        <button style="background:var(--gold);color:var(--gold-on);font-family:'Outfit',sans-serif;font-size:15px;font-weight:700;padding:14px 40px;border-radius:50px;border:none;margin-bottom:13px;width:260px;cursor:pointer;">Begin your journey</button>
+        <div style="font-size:12px;color:var(--cm);text-decoration:underline;text-underline-offset:3px;cursor:pointer;">I already have an account</div>
+        <div style="margin-top:28px;display:flex;align-items:center;gap:6px;"><span style="font-size:11px;color:var(--sage);">🔒</span><span style="font-size:11px;color:var(--cm);">100% on-device · Zero cloud · Encrypted</span></div>
+      </div>
+    </div>
+    <div class="phone-label">01 · splash · dark</div>
+  </div>
+
+  <!-- SPLASH LIGHT -->
+  <div class="phone-wrap">
+    <div class="mode-tag light-tag">◻ LIGHT</div>
+    <div class="phone light">
+      <div class="sb"><span class="sb-t">9:41</span><div class="sb-i"><span>●●●</span><span>🔋</span></div></div>
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:32px;background:radial-gradient(ellipse at 30% 20%,rgba(201,169,110,0.14),transparent 55%),var(--bg-light);">
+        <!-- card stays dark -->
+        <div style="width:80px;height:80px;background:var(--s2);border-radius:28px;border:1px solid rgba(201,169,110,0.28);display:flex;align-items:center;justify-content:center;font-size:34px;margin-bottom:24px;box-shadow:0 0 0 8px rgba(201,169,110,0.08);">📖</div>
+        <!-- text on parchment — dark -->
+        <div style="font-family:'Lora',serif;font-size:36px;color:var(--st-light);margin-bottom:8px;">Reflekt</div>
+        <div style="font-size:13px;color:var(--sm-light);text-align:center;max-width:220px;line-height:1.6;margin-bottom:44px;">Your private space to think, feel, and understand yourself better.</div>
+        <button style="background:var(--gold);color:var(--gold-on);font-family:'Outfit',sans-serif;font-size:15px;font-weight:700;padding:14px 40px;border-radius:50px;border:none;margin-bottom:13px;width:260px;cursor:pointer;">Begin your journey</button>
+        <div style="font-size:12px;color:rgba(44,35,24,0.45);text-decoration:underline;text-underline-offset:3px;cursor:pointer;">I already have an account</div>
+        <div style="margin-top:28px;display:flex;align-items:center;gap:6px;"><span style="font-size:11px;color:var(--sage);">🔒</span><span style="font-size:11px;color:var(--sm-light);">100% on-device · Zero cloud · Encrypted</span></div>
+      </div>
+    </div>
+    <div class="phone-label">01 · splash · light (bg changes, card stays dark)</div>
+  </div>
+
+  <!-- PERMISSIONS — from Screenshot 3 (Step 4 of 4) -->
+  <div class="phone-wrap">
+    <div class="mode-tag dark-tag">◼ DARK · from screenshot</div>
+    <div class="phone dark">
+      <div class="sb"><span class="sb-t">9:41</span><div class="sb-i"><span>●●●</span><span>🔋</span></div></div>
+      <div class="screen-body">
+      <div class="sc" style="padding:0 24px;">
+        <div style="padding-top:24px;margin-bottom:28px;">
+          <div style="font-size:11px;font-weight:700;color:var(--gold);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:12px;">✦ Setup · Step 4 of 4</div>
+          <div class="sh-title" style="font-size:28px;line-height:1.2;margin-bottom:12px;">Allow Reflekt to help you fully</div>
+          <div class="sh-muted" style="font-size:13px;line-height:1.6;">These permissions let Reflekt connect your digital habits to your emotional wellbeing. Everything stays on your device.</div>
+        </div>
+        <!-- Screen Time card -->
+        <div class="surf2" style="padding:18px;margin-bottom:12px;">
+          <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:14px;">
+            <div style="width:48px;height:48px;background:var(--s3);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">📱</div>
+            <div style="flex:1;"><div style="font-size:15px;font-weight:700;margin-bottom:5px;" class="ct">Screen Time Access</div><div style="font-size:12px;line-height:1.5;" class="cm">Reads app usage stats to find links between your digital habits and mood patterns.</div></div>
+          </div>
+          <button style="background:var(--gold);color:var(--gold-on);font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;padding:11px 24px;border-radius:50px;border:none;cursor:pointer;">Allow in Settings →</button>
+        </div>
+        <!-- Notifications card -->
+        <div class="surf2" style="padding:18px;margin-bottom:12px;">
+          <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:14px;">
+            <div style="width:48px;height:48px;background:rgba(111,168,128,0.15);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">🔔</div>
+            <div style="flex:1;"><div style="font-size:15px;font-weight:700;margin-bottom:5px;" class="ct">Notifications</div><div style="font-size:12px;line-height:1.5;" class="cm">Sends AI-generated check-in prompts and wellbeing nudges at the right moment.</div></div>
+          </div>
+          <button style="background:var(--sage);color:#0d1f14;font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;padding:11px 24px;border-radius:50px;border:none;cursor:pointer;">Allow Notifications</button>
+        </div>
+        <!-- Biometric card -->
+        <div class="surf2" style="padding:18px;margin-bottom:14px;">
+          <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:14px;">
+            <div style="width:48px;height:48px;background:rgba(155,133,200,0.15);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">🫆</div>
+            <div style="flex:1;"><div style="font-size:15px;font-weight:700;margin-bottom:5px;" class="ct">Biometric Authentication</div><div style="font-size:12px;line-height:1.5;" class="cm">Secures your journal with fingerprint or face lock. Your data, only yours.</div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;"><div style="width:46px;height:27px;background:var(--sage);border-radius:50px;position:relative;flex-shrink:0;"><div style="position:absolute;top:3px;right:3px;width:21px;height:21px;background:#fff;border-radius:50%;"></div></div><span style="font-size:13px;font-weight:600;color:var(--sage);">Enabled</span></div>
+        </div>
+        <!-- Zero cloud badge -->
+        <div style="background:rgba(111,168,128,0.08);border:1px solid rgba(111,168,128,0.2);border-radius:13px;padding:13px;display:flex;gap:9px;align-items:flex-start;margin-bottom:20px;">
+          <span style="font-size:15px;">🔒</span>
+          <div style="font-size:12px;line-height:1.5;" class="cm"><span style="color:var(--sage);font-weight:700;">Zero-cloud guarantee.</span> Permissions are used only on-device. No data is transmitted externally. Ever.</div>
+        </div>
+        <button style="width:100%;background:var(--gold);color:var(--gold-on);font-family:'Outfit',sans-serif;font-size:15px;font-weight:700;padding:15px;border-radius:50px;border:none;margin-bottom:10px;cursor:pointer;">Continue →</button>
+        <div style="text-align:center;font-size:12px;padding-bottom:24px;cursor:pointer;" class="cd">Skip for now — set up later</div>
+      </div>
+      </div>
+    </div>
+    <div class="phone-label">02 · permissions · Step 4 of 4</div>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════
+     SECTION B — HOME + JOURNAL
+══════════════════════════════════════════ -->
+<div class="sec-banner"><span class="sec-n">B</span><span class="sec-t">Home & Journal Entry</span><span class="sec-d">HomeScreen · JournalEntryScreen · PostJournalSaveScreen</span></div>
+<div class="grid">
+
+  <!-- HOME DARK -->
+  <div class="phone-wrap">
+    <div class="mode-tag dark-tag">◼ HOME · DARK</div>
+    <div class="phone dark">
+      <div class="sb"><span class="sb-t">9:41</span><div class="sb-i"><span>●●●</span><span>🔋</span></div></div>
+      <div class="screen-body">
+      <div class="sc">
+        <div style="padding:14px 22px 10px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span class="sh-muted" style="font-size:10px;">Wednesday, March 18</span><div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--lav));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--gold-on);">AR</div></div>
+          <div class="sh-title" style="font-size:24px;">Good morning,<br><em style="color:var(--gold);">Arjun.</em></div>
+        </div>
+        <!-- overdue banner -->
+        <div style="margin:0 22px 11px;background:rgba(212,117,106,0.1);border:1px solid rgba(212,117,106,0.22);border-radius:13px;padding:10px 13px;display:flex;align-items:center;gap:8px;">
+          <span>⚠️</span><div style="flex:1;"><div style="font-size:11px;font-weight:600;color:var(--blush);">2 overdue todos</div><div style="font-size:10px;" class="cm">"Register for 5K race"</div></div><div style="font-size:10px;font-weight:600;color:var(--blush);">View →</div>
+        </div>
+        <!-- habit strip -->
+        <div style="padding:0 22px 4px;font-size:10px;font-weight:500;" class="sh-muted">Today's habits</div>
+        <div style="display:flex;gap:6px;padding:0 22px 5px;overflow-x:auto;">
+          <div style="padding:5px 10px;border-radius:50px;background:rgba(111,168,128,0.18);border:1px solid var(--sage);font-size:10px;color:var(--sage);font-weight:500;white-space:nowrap;flex-shrink:0;">🏃 Run ✓</div>
+          <div style="padding:5px 10px;border-radius:50px;background:rgba(111,168,128,0.18);border:1px solid var(--sage);font-size:10px;color:var(--sage);font-weight:500;white-space:nowrap;flex-shrink:0;">📚 Read ✓</div>
+          <div style="padding:5px 10px;border-radius:50px;background:rgba(232,168,77,0.18);border:1px solid var(--amber);font-size:10px;color:var(--amber);font-weight:500;white-space:nowrap;flex-shrink:0;">💧 Water</div>
+          <div style="padding:5px 10px;border-radius:50px;background:rgba(232,168,77,0.18);border:1px solid var(--amber);font-size:10px;color:var(--amber);font-weight:500;white-space:nowrap;flex-shrink:0;">🚫 No SM</div>
+        </div>
+        <div style="padding:3px 22px 13px;display:flex;align-items:center;gap:7px;"><div style="flex:1;height:3px;background:var(--s3);border-radius:2px;"><div style="width:60%;height:100%;background:linear-gradient(90deg,var(--sage),var(--teal));border-radius:2px;"></div></div><div style="font-size:9px;color:var(--sage);font-weight:600;">3/5</div></div>
+        <!-- prompt card -->
+        <div style="margin:0 22px 13px;background:linear-gradient(135deg,var(--s2),var(--s3));border:1px solid var(--border);border-radius:20px;padding:15px;cursor:pointer;">
+          <div style="font-size:9px;font-weight:700;color:var(--gold);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:7px;">✦ TODAY'S PROMPT</div>
+          <div style="font-family:'Lora',serif;font-size:15px;line-height:1.5;margin-bottom:11px;" class="ct">"You went for a run today — how did your body feel?"</div>
+          <div style="display:inline-flex;align-items:center;gap:5px;background:var(--gold);color:var(--gold-on);font-size:11px;font-weight:700;padding:7px 14px;border-radius:50px;">Start writing →</div>
+        </div>
+        <!-- stat row -->
+        <div style="display:flex;gap:7px;padding:0 22px 13px;">
+          <div class="surf2" style="flex:1;padding:11px;"><div style="font-family:'Lora',serif;font-size:20px;" class="ct">12</div><div style="font-size:9px;" class="cm">Day streak 🔥</div></div>
+          <div class="surf2" style="flex:1;padding:11px;"><div style="font-family:'Lora',serif;font-size:20px;" class="ct">3</div><div style="font-size:9px;" class="cm">Active goals</div></div>
+          <div class="surf2" style="flex:1;padding:11px;"><div style="font-family:'Lora',serif;font-size:20px;color:var(--lav);">😰</div><div style="font-size:9px;" class="cm">Avg mood</div><div style="font-size:8px;color:var(--sage);">↑ Up</div></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:0 22px 9px;"><span class="sh-title" style="font-size:11px;font-weight:600;">Recent entries</span><span class="sh-link" style="font-size:11px;cursor:pointer;">See all</span></div>
+        <div class="card" style="margin:0 22px 9px;padding:13px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:10px;" class="cm">Yesterday · 10:23 PM</span><span class="badge b-anxious">😰 Anxious</span></div>
+          <div style="font-size:11px;line-height:1.5;" class="cm">Sprint review with Shruti. Scope changes...</div>
+          <div style="display:flex;gap:4px;margin-top:6px;"><span style="padding:2px 7px;background:var(--s3);border-radius:50px;font-size:9px;" class="cd">Work</span><span class="ai-tag">🏃 Run noted ✓</span></div>
+        </div>
+      </div>
+      <div class="bnav"><div class="ni act"><div class="ni-ic">🏠</div><div class="ni-lb" style="color:var(--gold);">Home</div></div><div class="ni"><div class="ni-ic">✏️</div><div class="ni-lb">Journal</div></div><div class="ni"><div class="ni-ic">✅</div><div class="ni-lb">Track</div></div><div class="ni"><div class="ni-ic">📋</div><div class="ni-lb">History</div></div><div class="ni"><div class="ni-ic">📊</div><div class="ni-lb">Insights</div></div><div class="ni"><div class="ni-ic">📱</div><div class="ni-lb">Wellbeing</div></div><div class="ni"><div class="ni-ic">⚙️</div><div class="ni-lb">Settings</div></div></div>
+      </div>
+    </div>
+    <div class="phone-label">03 · home · dark</div>
+  </div>
+
+  <!-- HOME LIGHT -->
+  <div class="phone-wrap">
+    <div class="mode-tag light-tag">◻ HOME · LIGHT</div>
+    <div class="phone light">
+      <div class="sb"><span class="sb-t">9:41</span><div class="sb-i"><span>●●●</span><span>🔋</span></div></div>
+      <div class="screen-body">
+      <div class="sc">
+        <div style="padding:14px 22px 10px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="font-size:10px;color:var(--sm-light);">Wednesday, March 18</span><div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--lav));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--gold-on);">AR</div></div>
+          <div style="font-family:'Lora',serif;font-size:24px;color:var(--st-light);">Good morning,<br><em style="color:var(--gold);">Arjun.</em></div>
+        </div>
+        <div style="margin:0 22px 11px;background:rgba(212,117,106,0.1);border:1px solid rgba(212,117,106,0.22);border-radius:13px;padding:10px 13px;display:flex;align-items:center;gap:8px;">
+          <span>⚠️</span><div style="flex:1;"><div style="font-size:11px;font-weight:600;color:var(--blush);">2 overdue todos</div><div style="font-size:10px;color:var(--sm-light);">"Register for 5K race"</div></div><div style="font-size:10px;font-weight:600;color:var(--blush);">View →</div>
+        </div>
+        <div style="padding:0 22px 4px;font-size:10px;font-weight:500;color:var(--sm-light);">Today's habits</div>
+        <div style="display:flex;gap:6px;padding:0 22px 5px;overflow-x:auto;">
+          <div style="padding:5px 10px;border-radius:50px;background:rgba(111,168,128,0.2);border:1px solid var(--sage);font-size:10px;color:#2d6a3f;font-weight:500;white-space:nowrap;flex-shrink:0;">🏃 Run ✓</div>
+          <div style="padding:5px 10px;border-radius:50px;background:rgba(111,168,128,0.2);border:1px solid var(--sage);font-size:10px;color:#2d6a3f;font-weight:500;white-space:nowrap;flex-shrink:0;">📚 Read ✓</div>
+          <div style="padding:5px 10px;border-radius:50px;background:rgba(201,169,110,0.2);border:1px solid var(--gold);font-size:10px;color:#7a5818;font-weight:500;white-space:nowrap;flex-shrink:0;">💧 Water</div>
+          <div style="padding:5px 10px;border-radius:50px;background:rgba(201,169,110,0.2);border:1px solid var(--gold);font-size:10px;color:#7a5818;font-weight:500;white-space:nowrap;flex-shrink:0;">🚫 No SM</div>
+        </div>
+        <div style="padding:3px 22px 13px;display:flex;align-items:center;gap:7px;"><div style="flex:1;height:3px;background:rgba(44,35,24,0.12);border-radius:2px;"><div style="width:60%;height:100%;background:linear-gradient(90deg,var(--sage),var(--teal));border-radius:2px;"></div></div><div style="font-size:9px;color:#2d6a3f;font-weight:600;">3/5</div></div>
+        <!-- PROMPT CARD stays dark -->
+        <div style="margin:0 22px 13px;background:linear-gradient(135deg,var(--s2),var(--s3));border:1px solid var(--border);border-radius:20px;padding:15px;cursor:pointer;">
+          <div style="font-size:9px;font-weight:700;color:var(--gold);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:7px;">✦ TODAY'S PROMPT</div>
+          <div style="font-family:'Lora',serif;font-size:15px;line-height:1.5;margin-bottom:11px;" class="ct">"You went for a run today — how did your body feel?"</div>
+          <div style="display:inline-flex;align-items:center;gap:5px;background:var(--gold);color:var(--gold-on);font-size:11px;font-weight:700;padding:7px 14px;border-radius:50px;">Start writing →</div>
+        </div>
+        <!-- STAT CARDS stay dark -->
+        <div style="display:flex;gap:7px;padding:0 22px 13px;">
+          <div class="surf2" style="flex:1;padding:11px;"><div style="font-family:'Lora',serif;font-size:20px;" class="ct">12</div><div style="font-size:9px;" class="cm">Day streak 🔥</div></div>
+          <div class="surf2" style="flex:1;padding:11px;"><div style="font-family:'Lora',serif;font-size:20px;" class="ct">3</div><div style="font-size:9px;" class="cm">Active goals</div></div>
+          <div class="surf2" style="flex:1;padding:11px;"><div style="font-family:'Lora',serif;font-size:20px;color:var(--lav);">😰</div><div style="font-size:9px;" class="cm">Avg mood</div></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:0 22px 9px;"><span style="font-size:11px;font-weight:600;color:var(--st-light);">Recent entries</span><span style="font-size:11px;color:var(--gold);cursor:pointer;">See all</span></div>
+        <!-- ENTRY CARD stays dark -->
+        <div class="card" style="margin:0 22px 9px;padding:13px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:10px;" class="cm">Yesterday · 10:23 PM</span><span class="badge b-anxious">😰 Anxious</span></div>
+          <div style="font-size:11px;line-height:1.5;" class="cm">Sprint review with Shruti. Scope changes...</div>
+          <div style="display:flex;gap:4px;margin-top:6px;"><span style="padding:2px 7px;background:var(--s3);border-radius:50px;font-size:9px;" class="cd">Work</span><span class="ai-tag">🏃 Run noted ✓</span></div>
+        </div>
+      </div>
+      <div class="bnav"><div class="ni act"><div class="ni-ic">🏠</div><div class="ni-lb" style="color:var(--gold);">Home</div></div><div class="ni"><div class="ni-ic">✏️</div><div class="ni-lb">Journal</div></div><div class="ni"><div class="ni-ic">✅</div><div class="ni-lb">Track</div></div><div class="ni"><div class="ni-ic">📋</div><div class="ni-lb">History</div></div><div class="ni"><div class="ni-ic">📊</div><div class="ni-lb">Insights</div></div><div class="ni"><div class="ni-ic">📱</div><div class="ni-lb">Wellbeing</div></div><div class="ni"><div class="ni-ic">⚙️</div><div class="ni-lb">Settings</div></div></div>
+      </div>
+    </div>
+    <div class="phone-label">03 · home · light</div>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════
+     SECTION C — WELLBEING + APP BLOCKED (from screenshots)
+══════════════════════════════════════════ -->
+<div class="sec-banner"><span class="sec-n">C</span><span class="sec-t">Wellbeing Dashboard & App Blocking</span><span class="sec-d">WellbeingScreen · BlockedScreen — from your screenshots</span></div>
+<div class="grid">
+
+  <!-- WELLBEING (from Screenshot 2 left) -->
+  <div class="phone-wrap">
+    <div class="mode-tag dark-tag">◼ WELLBEING DASHBOARD</div>
+    <div class="phone dark">
+      <div class="sb"><span class="sb-t">9:41</span><div class="sb-i"><span>●●●</span><span>🔋</span></div></div>
+      <div class="screen-body">
+      <div class="sc">
+        <!-- stat row -->
+        <div style="display:flex;gap:9px;padding:12px 22px 14px;">
+          <div class="surf2" style="flex:1;padding:13px 11px;border-radius:18px;"><div style="font-family:'Lora',serif;font-size:22px;" class="ct">4h 12m</div><div style="font-size:10px;color:var(--blush);margin-top:3px;font-weight:500;">↑ 42min vs goal</div></div>
+          <div class="surf2" style="flex:1;padding:13px 11px;border-radius:18px;"><div style="font-family:'Lora',serif;font-size:22px;" class="ct">38</div><div style="font-size:10px;margin-top:3px;" class="cm">Avg 52/day</div></div>
+          <div class="surf2" style="flex:1;padding:13px 11px;border-radius:18px;"><div style="font-family:'Lora',serif;font-size:18px;color:var(--lav);" class="ct">3.2 / 5</div><div style="font-size:10px;color:var(--blush);margin-top:3px;font-weight:500;">↓ from 4.1</div></div>
+        </div>
+        <!-- AI insight -->
+        <div style="margin:0 22px 14px;background:linear-gradient(135deg,rgba(155,133,200,0.15),rgba(95,159,196,0.08));border:1px solid rgba(155,133,200,0.25);border-radius:18px;padding:15px;">
+          <div style="font-size:10px;font-weight:700;color:var(--lav);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:7px;">✦ AI Insight</div>
+          <div style="font-size:13px;line-height:1.7;" class="ct">Your mood scores drop by <span style="color:var(--blush);font-weight:700;">38% on days</span> you spend 60+ min on Instagram. This pattern has appeared <span style="color:var(--lav);font-weight:700;">9 times</span> this month.</div>
+        </div>
+        <!-- Heatmap -->
+        <div class="surf2" style="margin:0 22px 14px;padding:15px;border-radius:18px;">
+          <div style="font-size:10px;font-weight:700;color:var(--cm);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:3px;">Mood-Usage Heatmap</div>
+          <div style="font-size:10px;margin-bottom:12px;" class="cd">Screen time vs emotional state · This week</div>
+          <div style="display:grid;grid-template-columns:44px repeat(7,1fr);gap:4px;font-size:9px;">
+            <div></div><div style="text-align:center;color:var(--cd);font-weight:600;">M</div><div style="text-align:center;color:var(--cd);font-weight:600;">T</div><div style="text-align:center;color:var(--cd);font-weight:600;">W</div><div style="text-align:center;color:var(--cd);font-weight:600;">T</div><div style="text-align:center;color:var(--cd);font-weight:600;">F</div><div style="text-align:center;color:var(--cd);font-weight:600;">S</div><div style="text-align:center;color:var(--cd);font-weight:600;">S</div>
+            <div style="color:var(--cm);font-size:9px;display:flex;align-items:center;">Social</div>
+            <div style="height:20px;border-radius:5px;background:rgba(212,117,106,0.55);"></div><div style="height:20px;border-radius:5px;background:rgba(212,117,106,0.75);"></div><div style="height:20px;border-radius:5px;background:rgba(212,117,106,0.4);"></div><div style="height:20px;border-radius:5px;background:rgba(212,117,106,0.85);"></div><div style="height:20px;border-radius:5px;background:rgba(212,117,106,0.5);"></div><div style="height:20px;border-radius:5px;background:rgba(111,168,128,0.45);"></div><div style="height:20px;border-radius:5px;background:rgba(95,159,196,0.3);"></div>
+            <div style="color:var(--cm);font-size:9px;display:flex;align-items:center;">Work</div>
+            <div style="height:20px;border-radius:5px;background:rgba(201,169,110,0.4);"></div><div style="height:20px;border-radius:5px;background:rgba(201,169,110,0.55);"></div><div style="height:20px;border-radius:5px;background:rgba(212,117,106,0.45);"></div><div style="height:20px;border-radius:5px;background:rgba(201,169,110,0.5);"></div><div style="height:20px;border-radius:5px;background:rgba(111,168,128,0.45);"></div><div style="height:20px;border-radius:5px;background:rgba(111,168,128,0.3);"></div><div style="height:20px;border-radius:5px;background:rgba(95,159,196,0.2);"></div>
+            <div style="color:var(--cm);font-size:9px;display:flex;align-items:center;">Stream</div>
+            <div style="height:20px;border-radius:5px;background:rgba(95,159,196,0.3);"></div><div style="height:20px;border-radius:5px;background:rgba(111,168,128,0.4);"></div><div style="height:20px;border-radius:5px;background:rgba(111,168,128,0.55);"></div><div style="height:20px;border-radius:5px;background:rgba(95,159,196,0.4);"></div><div style="height:20px;border-radius:5px;background:rgba(111,168,128,0.5);"></div><div style="height:20px;border-radius:5px;background:rgba(111,168,128,0.4);"></div><div style="height:20px;border-radius:5px;background:rgba(201,169,110,0.3);"></div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:10px;align-items:center;"><div style="font-size:9px;" class="cd">Impact:</div><div style="display:flex;align-items:center;gap:3px;"><div style="width:10px;height:10px;border-radius:3px;background:rgba(212,117,106,0.7);"></div><span style="font-size:9px;" class="cm">Negative</span></div><div style="display:flex;align-items:center;gap:3px;"><div style="width:10px;height:10px;border-radius:3px;background:rgba(111,168,128,0.6);"></div><span style="font-size:9px;" class="cm">Positive</span></div><div style="display:flex;align-items:center;gap:3px;"><div style="width:10px;height:10px;border-radius:3px;background:rgba(201,169,110,0.5);"></div><span style="font-size:9px;" class="cm">Neutral</span></div></div>
+        </div>
+        <!-- Trigger apps -->
+        <div style="padding:0 22px 8px;"><div style="font-size:13px;font-weight:700;margin-bottom:10px;" class="sh-title">Trigger Apps</div></div>
+        <div style="margin:0 22px 9px;background:var(--s2);border:1px solid rgba(212,117,106,0.2);border-radius:16px;padding:13px;display:flex;align-items:center;gap:11px;">
+          <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">📸</div>
+          <div style="flex:1;"><div style="font-size:13px;font-weight:700;" class="ct">Instagram</div><div style="font-size:10px;" class="cm">2h 14m today · High negative impact</div><div class="prog-bar" style="margin-top:5px;"><div class="prog-fill" style="width:78%;background:var(--blush);"></div></div></div>
+          <div style="background:var(--blush-s);border:1px solid rgba(212,117,106,0.3);border-radius:8px;padding:5px 11px;font-size:11px;font-weight:700;color:var(--blush);cursor:pointer;">Limit</div>
+        </div>
+        <div style="margin:0 22px 9px;background:var(--s2);border:1px solid rgba(201,169,110,0.15);border-radius:16px;padding:13px;display:flex;align-items:center;gap:11px;">
+          <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#1da1f2,#0d8ecf);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">🐦</div>
+          <div style="flex:1;"><div style="font-size:13px;font-weight:700;" class="ct">Twitter / X</div><div style="font-size:10px;" class="cm">48min today · Moderate impact</div><div class="prog-bar" style="margin-top:5px;"><div class="prog-fill" style="width:45%;background:var(--amber);"></div></div></div>
+          <div style="background:var(--gold-s);border:1px solid rgba(201,169,110,0.3);border-radius:8px;padding:5px 11px;font-size:11px;font-weight:700;color:var(--gold);cursor:pointer;">Limit</div>
+        </div>
+        <div style="margin:0 22px 16px;background:var(--s2);border:1px solid var(--border);border-radius:16px;padding:13px;display:flex;align-items:center;gap:11px;">
+          <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#ff0050,#ff4081);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">🎵</div>
+          <div style="flex:1;"><div style="font-size:13px;font-weight:700;" class="ct">TikTok</div><div style="font-size:10px;" class="cm">22min today · Low impact</div><div class="prog-bar" style="margin-top:5px;"><div class="prog-fill" style="width:22%;background:var(--sage);"></div></div></div>
+          <div style="background:var(--sage-s);border:1px solid rgba(111,168,128,0.3);border-radius:8px;padding:5px 11px;font-size:11px;font-weight:700;color:var(--sage);cursor:pointer;">Watch</div>
+        </div>
+      </div>
+      <div class="bnav"><div class="ni"><div class="ni-ic">🏠</div><div class="ni-lb">Home</div></div><div class="ni"><div class="ni-ic">✏️</div><div class="ni-lb">Journal</div></div><div class="ni"><div class="ni-ic">📋</div><div class="ni-lb">History</div></div><div class="ni"><div class="ni-ic">📊</div><div class="ni-lb">Insights</div></div><div class="ni act"><div class="ni-ic">📱</div><div class="ni-lb" style="color:var(--gold);">Wellbeing</div></div><div class="ni"><div class="ni-ic">⚙️</div><div class="ni-lb">Settings</div></div></div>
+      </div>
+    </div>
+    <div class="phone-label">04 · wellbeing</div>
+  </div>
+
+  <!-- APP BLOCKED (from Screenshot 2 right) -->
+  <div class="phone-wrap">
+    <div class="mode-tag dark-tag">◼ APP BLOCKED SCREEN</div>
+    <div class="phone dark">
+      <div class="sb"><span class="sb-t">9:41</span><div class="sb-i"><span>●●●</span><span>🔋</span></div></div>
+      <div class="screen-body" style="background:radial-gradient(ellipse at top,rgba(212,117,106,0.08),transparent 55%),var(--bg-dark);">
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:26px;text-align:center;overflow-y:auto;">
+          <!-- Greyed icon -->
+          <div style="position:relative;margin-bottom:24px;">
+            <div style="width:82px;height:82px;border-radius:22px;background:linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045);display:flex;align-items:center;justify-content:center;font-size:36px;filter:grayscale(0.8) brightness(0.65);overflow:hidden;">📸</div>
+            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;"><div style="width:58px;height:58px;border-radius:50%;background:rgba(212,117,106,0.22);border:2.5px solid var(--blush);display:flex;align-items:center;justify-content:center;font-size:24px;">🚫</div></div>
+          </div>
+          <div style="background:rgba(212,117,106,0.15);border:1px solid rgba(212,117,106,0.35);border-radius:50px;padding:5px 16px;font-size:11px;font-weight:700;color:var(--blush);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:16px;">Instagram · Paused</div>
+          <div style="font-family:'Lora',serif;font-size:24px;margin-bottom:9px;" class="ct">Time for a breather, Arjun.</div>
+          <div style="font-size:13px;line-height:1.7;margin-bottom:26px;" class="cm">You've logged feeling anxious for 4 days. Instagram usage has been linked to your lower moods. A short break can help you reset.</div>
+          <!-- Microtask options -->
+          <div class="surf2" style="width:100%;padding:16px;border-radius:18px;margin-bottom:14px;text-align:left;">
+            <div style="font-size:10px;font-weight:700;color:var(--gold);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:11px;">✦ Complete a micro-task to unlock</div>
+            <div class="surf3" style="padding:13px;border-radius:13px;display:flex;align-items:center;gap:11px;margin-bottom:7px;cursor:pointer;"><span style="font-size:19px;">🌬️</span><div style="flex:1;"><div style="font-size:13px;font-weight:600;" class="ct">2-min breathing exercise</div><div style="font-size:11px;" class="cm">Guided box breathing</div></div><span style="font-size:13px;" class="cd">›</span></div>
+            <div class="surf3" style="padding:13px;border-radius:13px;display:flex;align-items:center;gap:11px;margin-bottom:7px;cursor:pointer;"><span style="font-size:19px;">🙏</span><div style="flex:1;"><div style="font-size:13px;font-weight:600;" class="ct">Write a gratitude note</div><div style="font-size:11px;" class="cm">3 things you're thankful for</div></div><span style="font-size:13px;" class="cd">›</span></div>
+            <div class="surf3" style="padding:13px;border-radius:13px;display:flex;align-items:center;gap:11px;cursor:pointer;"><span style="font-size:19px;">🧘</span><div style="flex:1;"><div style="font-size:13px;font-weight:600;" class="ct">Body scan meditation</div><div style="font-size:11px;" class="cm">5-min guided check-in</div></div><span style="font-size:13px;" class="cd">›</span></div>
+          </div>
+          <div style="font-size:12px;text-decoration:underline;text-underline-offset:3px;cursor:pointer;" class="cd">Override with PIN (logged)</div>
+        </div>
+      </div>
+    </div>
+    <div class="phone-label">05 · blocked/{packageName}</div>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════
+     SECTION D — MICROTASK + UNLOCK (from Screenshot 1)
+══════════════════════════════════════════ -->
+<div class="sec-banner"><span class="sec-n">D</span><span class="sec-t">Microtask — Box Breathing & Unlock Success</span><span class="sec-d">MicrotaskScreen · UnlockSuccessScreen — from your screenshots</span></div>
+<div class="grid">
+
+  <!-- MICROTASK BREATHING -->
+  <div class="phone-wrap">
+    <div class="mode-tag dark-tag">◼ BOX BREATHING · from screenshot</div>
+    <div class="phone dark">
+      <div class="sb"><span class="sb-t">9:41</span><div class="sb-i"><span>●●●</span><span>🔋</span></div></div>
+      <div class="screen-body" style="background:radial-gradient(ellipse at center,rgba(95,159,196,0.07),transparent 60%),var(--bg-dark);">
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;padding:14px 26px 28px;overflow-y:auto;">
+        <!-- header -->
+        <div style="width:100%;display:flex;align-items:center;gap:12px;margin-bottom:24px;flex-shrink:0;">
+          <div class="surf2" style="width:36px;height:36px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;" class="ct">←</div>
+          <div style="flex:1;text-align:center;font-size:12px;" class="cm">Micro-task · 1 of 1</div>
+          <div style="width:36px;"></div>
+        </div>
+        <div style="font-size:10px;font-weight:700;color:var(--sky);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:11px;">🌬️ Box Breathing</div>
+        <div style="font-family:'Lora',serif;font-size:21px;text-align:center;margin-bottom:7px;" class="ct">Breathe with the circle</div>
+        <div style="font-size:12px;text-align:center;line-height:1.6;margin-bottom:30px;" class="cm">Follow the expanding ring. 4 counts in, hold, out, hold.</div>
+        <!-- breathing rings -->
+        <div style="position:relative;width:190px;height:190px;margin-bottom:24px;flex-shrink:0;">
+          <div style="position:absolute;inset:0;border-radius:50%;background:rgba(95,159,196,0.05);animation:breathe 8s ease-in-out infinite;"></div>
+          <div style="position:absolute;inset:18px;border-radius:50%;background:rgba(95,159,196,0.08);border:1.5px solid rgba(95,159,196,0.18);animation:breathe 8s ease-in-out infinite 0.5s;"></div>
+          <div style="position:absolute;inset:38px;border-radius:50%;background:rgba(95,159,196,0.14);border:2px solid rgba(95,159,196,0.32);animation:breathe 8s ease-in-out infinite 1s;display:flex;align-items:center;justify-content:center;">
+            <div style="text-align:center;"><div style="font-family:'Lora',serif;font-size:30px;color:var(--sky);line-height:1;">4</div><div style="font-size:11px;" class="cm">Inhale</div></div>
+          </div>
+        </div>
+        <!-- dots -->
+        <div style="display:flex;gap:8px;margin-bottom:24px;">
+          <div style="width:8px;height:8px;border-radius:50%;background:var(--sky);"></div>
+          <div style="width:8px;height:8px;border-radius:50%;background:var(--s3);"></div>
+          <div style="width:8px;height:8px;border-radius:50%;background:var(--s3);"></div>
+          <div style="width:8px;height:8px;border-radius:50%;background:var(--s3);"></div>
+        </div>
+        <!-- timer card -->
+        <div class="surf2" style="width:100%;padding:16px;border-radius:18px;text-align:center;margin-bottom:16px;">
+          <div style="font-size:12px;margin-bottom:5px;" class="cm">Time remaining</div>
+          <div style="font-family:'Lora',serif;font-size:34px;margin-bottom:11px;" class="ct">1:44</div>
+          <div class="prog-bar"><div class="prog-fill" style="width:28%;background:var(--sky);"></div></div>
+        </div>
+        <div style="font-size:11px;text-align:center;line-height:1.6;font-style:italic;" class="cd">"Breathing is the bridge between body and mind." — Thich Nhat Hanh</div>
+      </div>
+      </div>
+    </div>
+    <div class="phone-label">06 · microtask/BREATHING</div>
+  </div>
+
+  <!-- UNLOCK SUCCESS -->
+  <div class="phone-wrap">
+    <div class="mode-tag dark-tag">◼ UNLOCK SUCCESS · from screenshot</div>
+    <div class="phone dark">
+      <div class="sb"><span class="sb-t">9:41</span><div class="sb-i"><span>●●●</span><span>🔋</span></div></div>
+      <div class="screen-body" style="background:radial-gradient(ellipse at center,rgba(111,168,128,0.1),transparent 55%),var(--bg-dark);">
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:26px;text-align:center;overflow-y:auto;">
+        <!-- success ring -->
+        <div style="width:98px;height:98px;border-radius:50%;background:rgba(111,168,128,0.12);border:2px solid rgba(111,168,128,0.4);display:flex;align-items:center;justify-content:center;margin-bottom:20px;font-size:42px;animation:pulse 2s ease-in-out infinite;">✓</div>
+        <div style="font-family:'Lora',serif;font-size:26px;margin-bottom:9px;" class="ct">Well done, Arjun.</div>
+        <div style="font-size:13px;line-height:1.7;margin-bottom:26px;" class="cm">You completed your breathing exercise. Instagram is unlocked for 30 minutes. Take it slow.</div>
+        <!-- stat cards -->
+        <div style="display:flex;gap:9px;width:100%;margin-bottom:20px;">
+          <div class="surf2" style="flex:1;padding:13px;border-radius:16px;text-align:center;">
+            <div style="font-size:22px;margin-bottom:3px;">🔥</div>
+            <div style="font-family:'Lora',serif;font-size:20px;" class="ct">5</div>
+            <div style="font-size:10px;margin-top:2px;" class="cm">Task streak</div>
+          </div>
+          <div class="surf2" style="flex:1;padding:13px;border-radius:16px;text-align:center;">
+            <div style="font-size:22px;margin-bottom:3px;">⏱️</div>
+            <div style="font-family:'Lora',serif;font-size:20px;" class="ct">30m</div>
+            <div style="font-size:10px;margin-top:2px;" class="cm">Access window</div>
+          </div>
+          <div class="surf2" style="flex:1;padding:13px;border-radius:16px;text-align:center;">
+            <div style="font-size:22px;margin-bottom:3px;">🧘</div>
+            <div style="font-family:'Lora',serif;font-size:20px;" class="ct">12</div>
+            <div style="font-size:10px;margin-top:2px;" class="cm">Tasks done</div>
+          </div>
+        </div>
+        <!-- access timer -->
+        <div class="surf2" style="width:100%;padding:14px;border-radius:16px;margin-bottom:18px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">
+            <div style="font-size:12px;" class="cm">Instagram access</div>
+            <div style="font-size:12px;color:var(--sage);font-weight:700;">29:58 remaining</div>
+          </div>
+          <div class="prog-bar"><div class="prog-fill" style="width:100%;background:linear-gradient(90deg,var(--sage),var(--teal));"></div></div>
+        </div>
+        <button style="width:100%;background:var(--sage);color:#0d1f14;font-family:'Outfit',sans-serif;font-size:15px;font-weight:700;padding:14px;border-radius:50px;border:none;margin-bottom:11px;cursor:pointer;">Open Instagram</button>
+        <div style="font-size:12px;cursor:pointer;" class="cd">Return to journal</div>
+      </div>
+      </div>
+    </div>
+    <div class="phone-label">07 · microtask/success</div>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════
+     SECTION E — TRACK (HABITS / GOALS)
+══════════════════════════════════════════ -->
+<div class="sec-banner"><span class="sec-n">E</span><span class="sec-t">Track — Habits & Goals</span><span class="sec-d">HabitsTab · GoalsTab · HabitsViewModel</span></div>
+<div class="grid">
+
+  <!-- HABITS DARK -->
+  <div class="phone-wrap">
+    <div class="mode-tag dark-tag">◼ HABITS TAB · DARK</div>
+    <div class="phone dark">
+      <div class="sb"><span class="sb-t">9:41</span><div class="sb-i"><span>●●●</span><span>🔋</span></div></div>
+      <div class="screen-body">
+      <div style="padding:12px 22px 0;flex-shrink:0;background:var(--bg-dark);">
+        <div class="sh-title" style="font-size:22px;margin-bottom:12px;">Track</div>
+        <div class="tab-row" style="margin-bottom:14px;"><div class="tab-btn a">Habits</div><div class="tab-btn">Todos</div><div class="tab-btn">Goals</div></div>
+      </div>
+      <div class="sc">
+        <div style="display:flex;align-items:center;gap:12px;padding:0 22px 13px;">
+          <div style="position:relative;width:62px;height:62px;flex-shrink:0;">
+            <svg width="62" height="62" viewBox="0 0 62 62"><circle cx="31" cy="31" r="23" fill="none" stroke="#252d44" stroke-width="7"/><circle cx="31" cy="31" r="23" fill="none" stroke="#6fa880" stroke-width="7" stroke-dasharray="87 57" stroke-dashoffset="-14" stroke-linecap="round" transform="rotate(-90 31 31)"/></svg>
+            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;"><div style="font-family:'Lora',serif;font-size:14px;font-weight:600;line-height:1;" class="ct">3/5</div><div style="font-size:7px;" class="cm">done</div></div>
+          </div>
+          <div><div style="font-size:13px;font-weight:600;margin-bottom:2px;" class="ct">3 of 5 complete 🎯</div><div style="font-size:10px;line-height:1.4;" class="cm">2 habits pending.</div></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:0 22px 9px;"><span class="sh-title" style="font-size:11px;font-weight:600;">Today's habits</span><span style="font-size:16px;color:var(--gold);cursor:pointer;">＋</span></div>
+        <!-- habit cards -->
+        <div class="card" style="margin:0 22px 8px;overflow:hidden;border-radius:13px;">
+          <div style="display:flex;align-items:center;gap:10px;padding:11px 13px;">
+            <div style="width:37px;height:37px;border-radius:12px;background:rgba(111,168,128,0.15);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">🏃</div>
+            <div style="flex:1;"><div style="font-size:12px;font-weight:600;" class="ct">Morning run</div><div style="display:flex;gap:4px;align-items:center;margin-top:2px;"><span class="streak">🔥 12</span><span style="font-size:8px;" class="cd">Daily</span></div></div>
+            <div class="check-done">✓</div>
+          </div>
+          <div class="dots"><div class="dot" style="background:var(--sage);"></div><div class="dot" style="background:var(--sage);"></div><div class="dot" style="background:var(--sage);"></div><div class="dot" style="background:var(--blush);"></div><div class="dot" style="background:var(--sage);"></div><div class="dot" style="background:var(--sage);"></div><div class="dot" style="background:var(--sage);"></div></div>
+        </div>
+        <div class="card" style="margin:0 22px 8px;overflow:hidden;border-radius:13px;">
+          <div style="display:flex;align-items:center;gap:10px;padding:11px 13px;">
+            <div style="width:37px;height:37px;border-radius:12px;background:rgba(155,133,200,0.15);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">🧘</div>
+            <div style="flex:1;"><div style="font-size:12px;font-weight:600;" class="ct">10-min meditation</div><div style="display:flex;gap:4px;align-items:center;margin-top:2px;"><span class="streak">🔥 5</span><span class="ai-tag">✦ via journal</span></div></div>
+            <div class="check-done">✓</div>
+          </div>
+        </div>
+        <div class="card" style="margin:0 22px 8px;overflow:hidden;border-radius:13px;border-color:rgba(212,117,106,0.32);">
+          <div style="display:flex;align-items:center;gap:10px;padding:11px 13px;">
+            <div style="width:37px;height:37px;border-radius:12px;background:rgba(212,117,106,0.12);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">🚫</div>
+            <div style="flex:1;"><div style="font-size:12px;font-weight:600;" class="ct">No social media before 9am</div><div style="display:flex;gap:4px;align-items:center;margin-top:2px;"><span style="background:rgba(212,117,106,0.18);color:var(--blush);font-size:9px;font-weight:700;padding:2px 7px;border-radius:50px;">⚠️ Streak at risk</span></div></div>
+            <div class="check-todo">○</div>
+          </div>
+        </div>
+      </div>
+      <div class="fab">＋</div>
+      <div class="bnav"><div class="ni"><div class="ni-ic">🏠</div><div class="ni-lb">Home</div></div><div class="ni"><div class="ni-ic">✏️</div><div class="ni-lb">Journal</div></div><div class="ni act"><div class="ni-ic">✅</div><div class="ni-lb" style="color:var(--gold);">Track</div></div><div class="ni"><div class="ni-ic">📋</div><div class="ni-lb">History</div></div><div class="ni"><div class="ni-ic">📊</div><div class="ni-lb">Insights</div></div><div class="ni"><div class="ni-ic">📱</div><div class="ni-lb">Wellbeing</div></div><div class="ni"><div class="ni-ic">⚙️</div><div class="ni-lb">Settings</div></div></div>
+      </div>
+    </div>
+    <div class="phone-label">08 · habits · dark</div>
+  </div>
+
+  <!-- HABITS LIGHT -->
+  <div class="phone-wrap">
+    <div class="mode-tag light-tag">◻ HABITS TAB · LIGHT</div>
+    <div class="phone light">
+      <div class="sb"><span class="sb-t">9:41</span><div class="sb-i"><span>●●●</span><span>🔋</span></div></div>
+      <div class="screen-body">
+      <div style="padding:12px 22px 0;flex-shrink:0;background:var(--bg-light);">
+        <!-- title on parchment bg = dark text -->
+        <div style="font-family:'Lora',serif;font-size:22px;color:var(--st-light);margin-bottom:12px;">Track</div>
+        <!-- tab row stays dark -->
+        <div class="tab-row" style="margin-bottom:14px;"><div class="tab-btn a">Habits</div><div class="tab-btn">Todos</div><div class="tab-btn">Goals</div></div>
+      </div>
+      <div class="sc">
+        <div style="display:flex;align-items:center;gap:12px;padding:0 22px 13px;">
+          <div style="position:relative;width:62px;height:62px;flex-shrink:0;">
+            <svg width="62" height="62" viewBox="0 0 62 62"><circle cx="31" cy="31" r="23" fill="none" stroke="#252d44" stroke-width="7"/><circle cx="31" cy="31" r="23" fill="none" stroke="#6fa880" stroke-width="7" stroke-dasharray="87 57" stroke-dashoffset="-14" stroke-linecap="round" transform="rotate(-90 31 31)"/></svg>
+            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;"><div style="font-family:'Lora',serif;font-size:14px;font-weight:600;line-height:1;" class="ct">3/5</div><div style="font-size:7px;" class="cm">done</div></div>
+          </div>
+          <!-- summary text on parchment = dark text -->
+          <div><div style="font-size:13px;font-weight:600;margin-bottom:2px;color:var(--st-light);">3 of 5 complete 🎯</div><div style="font-size:10px;line-height:1.4;color:var(--sm-light);">2 habits pending.</div></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:0 22px 9px;"><span style="font-size:11px;font-weight:600;color:var(--st-light);">Today's habits</span><span style="font-size:16px;color:var(--gold);cursor:pointer;">＋</span></div>
+        <!-- HABIT CARDS stay dark in light mode -->
+        <div class="card" style="margin:0 22px 8px;overflow:hidden;border-radius:13px;">
+          <div style="display:flex;align-items:center;gap:10px;padding:11px 13px;">
+            <div style="width:37px;height:37px;border-radius:12px;background:rgba(111,168,128,0.15);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">🏃</div>
+            <div style="flex:1;"><div style="font-size:12px;font-weight:600;" class="ct">Morning run</div><div style="display:flex;gap:4px;align-items:center;margin-top:2px;"><span class="streak">🔥 12</span><span style="font-size:8px;" class="cd">Daily</span></div></div>
+            <div class="check-done">✓</div>
+          </div>
+          <div class="dots"><div class="dot" style="background:var(--sage);"></div><div class="dot" style="background:var(--sage);"></div><div class="dot" style="background:var(--sage);"></div><div class="dot" style="background:var(--blush);"></div><div class="dot" style="background:var(--sage);"></div><div class="dot" style="background:var(--sage);"></div><div class="dot" style="background:var(--sage);"></div></div>
+        </div>
+        <div class="card" style="margin:0 22px 8px;overflow:hidden;border-radius:13px;">
+          <div style="display:flex;align-items:center;gap:10px;padding:11px 13px;">
+            <div style="width:37px;height:37px;border-radius:12px;background:rgba(155,133,200,0.15);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">🧘</div>
+            <div style="flex:1;"><div style="font-size:12px;font-weight:600;" class="ct">10-min meditation</div><div style="display:flex;gap:4px;align-items:center;margin-top:2px;"><span class="streak">🔥 5</span><span class="ai-tag">✦ via journal</span></div></div>
+            <div class="check-done">✓</div>
+          </div>
+        </div>
+        <div class="card" style="margin:0 22px 8px;overflow:hidden;border-radius:13px;border-color:rgba(212,117,106,0.32);">
+          <div style="display:flex;align-items:center;gap:10px;padding:11px 13px;">
+            <div style="width:37px;height:37px;border-radius:12px;background:rgba(212,117,106,0.12);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">🚫</div>
+            <div style="flex:1;"><div style="font-size:12px;font-weight:600;" class="ct">No social media before 9am</div><div style="display:flex;gap:4px;align-items:center;margin-top:2px;"><span style="background:rgba(212,117,106,0.18);color:var(--blush);font-size:9px;font-weight:700;padding:2px 7px;border-radius:50px;">⚠️ Streak at risk</span></div></div>
+            <div class="check-todo">○</div>
+          </div>
+        </div>
+      </div>
+      <div class="fab">＋</div>
+      <div class="bnav"><div class="ni"><div class="ni-ic">🏠</div><div class="ni-lb">Home</div></div><div class="ni"><div class="ni-ic">✏️</div><div class="ni-lb">Journal</div></div><div class="ni act"><div class="ni-ic">✅</div><div class="ni-lb" style="color:var(--gold);">Track</div></div><div class="ni"><div class="ni-ic">📋</div><div class="ni-lb">History</div></div><div class="ni"><div class="ni-ic">📊</div><div class="ni-lb">Insights</div></div><div class="ni"><div class="ni-ic">📱</div><div class="ni-lb">Wellbeing</div></div><div class="ni"><div class="ni-ic">⚙️</div><div class="ni-lb">Settings</div></div></div>
+      </div>
+    </div>
+    <div class="phone-label">08 · habits · light (bg+nav change, cards stay dark)</div>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════
+     TOKEN QUICK REFERENCE
+══════════════════════════════════════════ -->
+<div class="sec-banner" style="position:static;top:auto;"><span class="sec-n">REF</span><span class="sec-t">Kotlin Implementation Quick Reference</span></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;padding:24px 40px 48px;">
+  <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:16px;">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gold);font-weight:600;margin-bottom:10px;letter-spacing:0.08em;">DARK — DarkColorScheme</div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;line-height:2;color:rgba(238,234,226,0.6);">background = Color(0xFF0E1117)<br>surface = Color(0xFF161B27)<br>surfaceVariant = Color(0xFF1E2538)<br>primary = Color(0xFFC9A96E)<br>onBackground = Color(0xFFEEEAE2)</div>
+  </div>
+  <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:16px;">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--sage);font-weight:600;margin-bottom:10px;letter-spacing:0.08em;">LIGHT — uses darkColorScheme() base</div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;line-height:2;color:rgba(238,234,226,0.6);">background = Color(0xFFF0EBE1) ← changes<br>onBackground = Color(0xFF2C2318) ← changes<br>surface = Color(0xFF1A2030) ← stays dark<br>surfaceVariant = Color(0xFF1E2538) ← stays dark<br>primary = Color(0xFFC9A96E) ← unchanged</div>
+  </div>
+  <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:16px;">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gold);font-weight:600;margin-bottom:10px;letter-spacing:0.08em;">THEME SWITCH — Theme.kt</div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;line-height:2;color:rgba(238,234,226,0.6);">val isDark = when(pref) {<br>&nbsp;&nbsp;DARK → true<br>&nbsp;&nbsp;LIGHT → false<br>&nbsp;&nbsp;SYSTEM → isSystemInDarkTheme()<br>}<br>MaterialTheme(<br>&nbsp;&nbsp;colorScheme = if(isDark) DarkCS else LightCS<br>)</div>
+  </div>
+  <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:16px;">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--blush);font-weight:600;margin-bottom:10px;letter-spacing:0.08em;">NEVER CHANGES IN LIGHT MODE</div>
+    <div style="font-size:11px;line-height:1.9;color:rgba(238,234,226,0.55);">Card backgrounds (#1A2030)<br>Input fields / TextFields (#1E2538)<br>AI chat bubbles (surfaceVariant)<br>User chat bubbles (primary gold)<br>Settings item backgrounds<br>Bottom sheet surfaces<br>Habit card backgrounds<br>All text inside cards (stays light)</div>
+  </div>
+</div>
+
+</body>
+</html>
