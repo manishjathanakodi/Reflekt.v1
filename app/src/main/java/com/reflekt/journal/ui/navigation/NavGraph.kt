@@ -10,6 +10,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.reflekt.journal.ui.screens.auth.AuthScreen
+import com.reflekt.journal.ui.screens.home.HomeScreen
+import com.reflekt.journal.ui.screens.journal.JournalEntryScreen
+import com.reflekt.journal.ui.screens.journal.JournalViewModel
+import com.reflekt.journal.ui.screens.journal.PostJournalSaveScreen
 import com.reflekt.journal.ui.screens.onboarding.DemographicsScreen
 import com.reflekt.journal.ui.screens.onboarding.OnboardingViewModel
 import com.reflekt.journal.ui.screens.onboarding.PermissionsScreen
@@ -104,12 +108,12 @@ fun ReflektNavGraph(navController: NavHostController) {
 
         // 7. Home
         composable(Routes.HOME) {
-            Text("HomeScreen placeholder")
+            HomeScreen(navController)
         }
 
-        // 8. Journal — New entry
+        // 8. Journal — New entry (owns the shared JournalViewModel)
         composable(Routes.JOURNAL_NEW) {
-            Text("JournalEntryScreen placeholder")
+            JournalEntryScreen(navController)
         }
 
         // 9. Journal — Existing entry
@@ -120,9 +124,13 @@ fun ReflektNavGraph(navController: NavHostController) {
             Text("JournalEntryScreen placeholder")
         }
 
-        // 10. Journal — Post-save
-        composable(Routes.JOURNAL_SAVED) {
-            Text("PostJournalSaveScreen placeholder")
+        // 10. Journal — Post-save (shares JournalViewModel scoped to JOURNAL_NEW)
+        composable(Routes.JOURNAL_SAVED) { entry ->
+            val journalEntry = remember(entry) {
+                navController.getBackStackEntry(Routes.JOURNAL_NEW)
+            }
+            val viewModel: JournalViewModel = hiltViewModel(journalEntry)
+            PostJournalSaveScreen(navController, viewModel)
         }
 
         // 11. History
