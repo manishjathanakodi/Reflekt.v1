@@ -44,4 +44,8 @@ interface HabitLogDao {
         """
     )
     suspend fun getStreakForHabit(habitId: String): Int
+
+    /** All logs on or after [since] (YYYY-MM-DD) — used for per-habit calendar strips. */
+    @Query("SELECT * FROM habit_log WHERE date >= :since ORDER BY date ASC")
+    fun getLogsForPeriod(since: String): Flow<List<HabitLog>>
 }

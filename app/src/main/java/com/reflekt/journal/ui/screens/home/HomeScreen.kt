@@ -318,7 +318,7 @@ fun TodayPromptCard(prompt: String, onClick: () -> Unit, modifier: Modifier = Mo
         verticalArrangement = Arrangement.spacedBy(11.dp),
     ) {
         Text(
-            "✦ TODAY'S PROMPT",
+            "✦ I'm listening",
             fontSize = 9.sp,
             fontWeight = FontWeight.Bold,
             color = Gold,

@@ -1,15 +1,38 @@
 package com.reflekt.journal.ui.navigation
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navArgument
+import com.reflekt.journal.ui.theme.LightBackground
+import com.reflekt.journal.ui.screens.analytics.AnalyticsScreen
 import com.reflekt.journal.ui.screens.auth.AuthScreen
+import com.reflekt.journal.ui.screens.history.HistoryScreen
 import com.reflekt.journal.ui.screens.home.HomeScreen
 import com.reflekt.journal.ui.screens.journal.JournalEntryScreen
 import com.reflekt.journal.ui.screens.journal.JournalViewModel
@@ -20,6 +43,11 @@ import com.reflekt.journal.ui.screens.onboarding.PermissionsScreen
 import com.reflekt.journal.ui.screens.onboarding.RelationMapScreen
 import com.reflekt.journal.ui.screens.onboarding.StatusScreen
 import com.reflekt.journal.ui.screens.splash.SplashScreen
+import com.reflekt.journal.ui.screens.track.GoalDetailScreen
+import com.reflekt.journal.ui.screens.track.TrackScreen
+import com.reflekt.journal.ui.screens.wellbeing.MicrotaskScreen
+import com.reflekt.journal.ui.screens.wellbeing.UnlockSuccessScreen
+import com.reflekt.journal.ui.screens.wellbeing.WellbeingScreen
 
 // ── Route constants ───────────────────────────────────────────────────────────
 object Routes {
@@ -54,15 +82,120 @@ object Routes {
     fun wellbeingApp(packageName: String) = "wellbeing/app/$packageName"
     fun blocked(packageName: String)      = "blocked/$packageName"
     fun microtask(taskType: String)       = "microtask/$taskType"
+
+    /** Navigate to history with a pre-selected mood filter (from analytics donut). */
+    fun historyFiltered(mood: com.reflekt.journal.ai.engine.MoodTag) =
+        "history?moodFilter=${mood.name}"
+
+}
+
+// ── Bottom nav items ──────────────────────────────────────────────────────────
+
+private data class NavItem(val route: String, val emoji: String, val label: String)
+
+private val NAV_ITEMS = listOf(
+    NavItem(Routes.HOME,      "🏠", "Home"),
+    NavItem(Routes.JOURNAL_NEW, "✏️", "Journal"),
+    NavItem(Routes.HABITS,    "✅", "Track"),
+    NavItem(Routes.HISTORY,   "📋", "History"),
+    NavItem(Routes.ANALYTICS, "📊", "Insights"),
+    NavItem(Routes.WELLBEING, "📱", "Wellbeing"),
+    NavItem(Routes.SETTINGS,  "⚙️", "Settings"),
+)
+
+private val BOTTOM_NAV_ROUTES = setOf(
+    Routes.HOME, Routes.JOURNAL_NEW,
+    Routes.HABITS, Routes.TODOS, Routes.GOALS,
+    Routes.HISTORY, Routes.ANALYTICS,
+    Routes.WELLBEING, Routes.SETTINGS,
+)
+
+@Composable
+fun ReflektBottomNav(currentRoute: String?, navController: NavHostController) {
+    val isLightMode = MaterialTheme.colorScheme.background == LightBackground
+    val navBg       = if (isLightMode) Color(0xFFE8E1D4) else Color(0xFF161B27)
+    val gold        = Color(0xFFC9A96E)
+    val muted       = Color(0x80EEEAE2)
+
+    // Which nav item is "active"
+    val activeRoute = when (currentRoute) {
+        Routes.TODOS, Routes.GOALS -> Routes.HABITS   // Track tab
+        else -> currentRoute
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(navBg),
+    ) {
+        // Top border line
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(Color(0x0FFFFFFF))
+                .align(Alignment.TopCenter),
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 3.dp, vertical = 0.dp)
+                .padding(bottom = 8.dp),
+            horizontalArrangement = Arrangement.SpaceAround,
+        ) {
+            NAV_ITEMS.forEach { item ->
+                val isActive = activeRoute == item.route
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(13.dp))
+                        .background(if (isActive) gold.copy(alpha = 0.15f) else Color.Transparent)
+                        .clickable {
+                            navController.navigate(item.route) {
+                                popUpTo(Routes.HOME) { saveState = true }
+                                launchSingleTop = true
+                                restoreState    = true
+                            }
+                        }
+                        .padding(vertical = 5.dp, horizontal = 7.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    Text(item.emoji, fontSize = 19.sp, lineHeight = 19.sp)
+                    Text(
+                        item.label,
+                        fontSize   = 8.sp,
+                        fontWeight = FontWeight.Medium,
+                        color      = if (isActive) gold else muted,
+                    )
+                }
+            }
+        }
+    }
 }
 
 // ── NavGraph ──────────────────────────────────────────────────────────────────
 @Composable
 fun ReflektNavGraph(navController: NavHostController) {
-    NavHost(
-        navController    = navController,
-        startDestination = Routes.SPLASH,
-    ) {
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
+    val showBottomNav = currentRoute in BOTTOM_NAV_ROUTES
+        || currentRoute?.startsWith("history?") == true
+
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        bottomBar = {
+            if (showBottomNav) {
+                ReflektBottomNav(currentRoute = currentRoute, navController = navController)
+            }
+        },
+    ) { innerPadding ->
+        NavHost(
+            navController    = navController,
+            startDestination = Routes.SPLASH,
+            modifier         = Modifier.padding(innerPadding),
+        ) {
         // 1. Splash
         composable(Routes.SPLASH) {
             SplashScreen(navController)
@@ -133,29 +266,39 @@ fun ReflektNavGraph(navController: NavHostController) {
             PostJournalSaveScreen(navController, viewModel)
         }
 
-        // 11. History
-        composable(Routes.HISTORY) {
-            Text("HistoryScreen placeholder")
+        // 11. History — optional moodFilter query param set by Analytics donut tap
+        composable(
+            route = "${Routes.HISTORY}?moodFilter={moodFilter}",
+            arguments = listOf(
+                navArgument("moodFilter") {
+                    type         = NavType.StringType
+                    nullable     = true
+                    defaultValue = null
+                },
+            ),
+        ) { backStackEntry ->
+            val moodFilter = backStackEntry.arguments?.getString("moodFilter")
+            HistoryScreen(navController = navController, initialMoodFilter = moodFilter)
         }
 
         // 12. Analytics
         composable(Routes.ANALYTICS) {
-            Text("AnalyticsScreen placeholder")
+            AnalyticsScreen(navController = navController)
         }
 
-        // 13. Track — Habits
+        // 13. Track — Habits (default tab = 0)
         composable(Routes.HABITS) {
-            Text("TrackScreen (Habits) placeholder")
+            TrackScreen(navController = navController, startTab = 0)
         }
 
-        // 14. Track — Todos
+        // 14. Track — Todos (start on tab 1)
         composable(Routes.TODOS) {
-            Text("TrackScreen (Todos) placeholder")
+            TrackScreen(navController = navController, startTab = 1)
         }
 
-        // 15. Track — Goals
+        // 15. Track — Goals (start on tab 2)
         composable(Routes.GOALS) {
-            Text("TrackScreen (Goals) placeholder")
+            TrackScreen(navController = navController, startTab = 2)
         }
 
         // 16. Goal Detail
@@ -163,12 +306,12 @@ fun ReflektNavGraph(navController: NavHostController) {
             route     = Routes.GOAL_DETAIL,
             arguments = listOf(navArgument("goalId") { type = NavType.StringType }),
         ) {
-            Text("GoalDetailScreen placeholder")
+            GoalDetailScreen(navController = navController)
         }
 
         // 17. Wellbeing
         composable(Routes.WELLBEING) {
-            Text("WellbeingScreen placeholder")
+            WellbeingScreen(navController = navController)
         }
 
         // 18. Wellbeing — App detail
@@ -212,12 +355,13 @@ fun ReflektNavGraph(navController: NavHostController) {
             route     = Routes.MICROTASK,
             arguments = listOf(navArgument("taskType") { type = NavType.StringType }),
         ) {
-            Text("MicrotaskScreen placeholder")
+            MicrotaskScreen(navController = navController)
         }
 
         // 25. Microtask — Success
         composable(Routes.MICROTASK_SUCCESS) {
-            Text("UnlockSuccessScreen placeholder")
+            UnlockSuccessScreen(navController = navController)
         }
     }
+}
 }

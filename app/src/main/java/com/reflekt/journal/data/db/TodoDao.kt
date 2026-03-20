@@ -35,4 +35,7 @@ interface TodoDao {
         """
     )
     fun getOverdue(): Flow<List<Todo>>
+
+    @Query("SELECT * FROM todo WHERE goalId = :goalId AND isArchived = 0 ORDER BY dueDate ASC")
+    fun getByGoal(goalId: String): Flow<List<Todo>>
 }

@@ -25,6 +25,10 @@ interface MoodLogDao {
     @Query("SELECT * FROM mood_log WHERE logId = :logId LIMIT 1")
     suspend fun getById(logId: String): MoodLog?
 
+    /** Look up today's (or any day's) log by YYYY-MM-DD date string. */
+    @Query("SELECT * FROM mood_log WHERE date = :date LIMIT 1")
+    suspend fun getByDate(date: String): MoodLog?
+
     /** Returns mood logs for the last [n] calendar days, newest first. */
     @Query("SELECT * FROM mood_log WHERE date >= date('now', '-' || :n || ' days') ORDER BY date DESC")
     fun getLastNDays(n: Int): Flow<List<MoodLog>>

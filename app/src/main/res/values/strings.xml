@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Reflekt</string>
+    <string name="accessibility_service_description">Reflekt monitors foreground apps to pause trigger apps and prompt mindful micro-tasks. No screen content is read.</string>
 </resources>

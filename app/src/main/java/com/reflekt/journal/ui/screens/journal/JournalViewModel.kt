@@ -220,17 +220,30 @@ class JournalViewModel @Inject constructor(
                 )
                 journalEntryDao.insert(entry)
 
-                // 4. Save/update MoodLog for today
+                // 4. Save/update MoodLog for today — recalculate aggregate from all today's entries
                 val todayStr = LocalDate.now().toString()
-                val existingLog = moodLogDao.getAll().first().firstOrNull { it.date == todayStr }
+                val existingLog = moodLogDao.getByDate(todayStr)
+                val dayStart = java.time.LocalDate.now()
+                    .atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+                val dayEnd = dayStart + 24L * 60 * 60 * 1000
+                val todayEntries = journalEntryDao.getEntriesForDay(dayStart, dayEnd)
+                val avgScore = if (todayEntries.isNotEmpty())
+                    todayEntries.map { it.moodScore }.average().toFloat()
+                else journalAnalysis.moodScore
+                val dominantMoodStr = todayEntries.groupBy { it.moodTag }
+                    .maxByOrNull { it.value.size }?.key ?: journalAnalysis.mood.name
+                val primaryTrigger = todayEntries.flatMap { e ->
+                    try { Json.decodeFromString<List<String>>(e.triggersJson) }
+                    catch (_: Exception) { emptyList() }
+                }.groupingBy { it }.eachCount().maxByOrNull { it.value }?.key ?: ""
                 val moodLog = MoodLog(
                     logId = existingLog?.logId ?: UUID.randomUUID().toString(),
                     date = todayStr,
-                    moodScore = journalAnalysis.moodScore,
-                    dominantMood = journalAnalysis.mood.name,
-                    primaryTrigger = journalAnalysis.triggers.firstOrNull() ?: "",
+                    moodScore = avgScore,
+                    dominantMood = dominantMoodStr,
+                    primaryTrigger = primaryTrigger,
                     screenTimeMs = 0L,
-                    entryCount = (existingLog?.entryCount ?: 0) + 1,
+                    entryCount = todayEntries.size,
                 )
                 moodLogDao.upsert(moodLog)
 
