@@ -2,45 +2,54 @@ package com.reflekt.journal.ui.navigation
 
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.reflekt.journal.ui.screens.auth.AuthScreen
+import com.reflekt.journal.ui.screens.onboarding.DemographicsScreen
+import com.reflekt.journal.ui.screens.onboarding.OnboardingViewModel
+import com.reflekt.journal.ui.screens.onboarding.PermissionsScreen
+import com.reflekt.journal.ui.screens.onboarding.RelationMapScreen
+import com.reflekt.journal.ui.screens.onboarding.StatusScreen
+import com.reflekt.journal.ui.screens.splash.SplashScreen
 
 // ── Route constants ───────────────────────────────────────────────────────────
 object Routes {
-    const val SPLASH                = "splash"
-    const val ONBOARDING_DEMO       = "onboarding/demographics"
-    const val ONBOARDING_STATUS     = "onboarding/status"
-    const val ONBOARDING_RELATIONS  = "onboarding/relations"
+    const val SPLASH                 = "splash"
+    const val ONBOARDING_DEMO        = "onboarding/demographics"
+    const val ONBOARDING_STATUS      = "onboarding/status"
+    const val ONBOARDING_RELATIONS   = "onboarding/relations"
     const val ONBOARDING_PERMISSIONS = "onboarding/permissions"
-    const val AUTH_LOGIN            = "auth/login"
-    const val HOME                  = "home"
-    const val JOURNAL_NEW           = "journal/new"
-    const val JOURNAL_ENTRY         = "journal/{entryId}"
-    const val JOURNAL_SAVED         = "journal/saved"
-    const val HISTORY               = "history"
-    const val ANALYTICS             = "analytics"
-    const val HABITS                = "habits"
-    const val TODOS                 = "todos"
-    const val GOALS                 = "goals"
-    const val GOAL_DETAIL           = "goals/{goalId}"
-    const val WELLBEING             = "wellbeing"
-    const val WELLBEING_APP         = "wellbeing/app/{packageName}"
-    const val SETTINGS              = "settings"
-    const val SETTINGS_EXPORT       = "settings/export"
-    const val SETTINGS_IMPORT       = "settings/import"
-    const val CRISIS                = "crisis"
-    const val BLOCKED               = "blocked/{packageName}"
-    const val MICROTASK             = "microtask/{taskType}"
-    const val MICROTASK_SUCCESS     = "microtask/success"
+    const val AUTH_LOGIN             = "auth/login"
+    const val HOME                   = "home"
+    const val JOURNAL_NEW            = "journal/new"
+    const val JOURNAL_ENTRY          = "journal/{entryId}"
+    const val JOURNAL_SAVED          = "journal/saved"
+    const val HISTORY                = "history"
+    const val ANALYTICS              = "analytics"
+    const val HABITS                 = "habits"
+    const val TODOS                  = "todos"
+    const val GOALS                  = "goals"
+    const val GOAL_DETAIL            = "goals/{goalId}"
+    const val WELLBEING              = "wellbeing"
+    const val WELLBEING_APP          = "wellbeing/app/{packageName}"
+    const val SETTINGS               = "settings"
+    const val SETTINGS_EXPORT        = "settings/export"
+    const val SETTINGS_IMPORT        = "settings/import"
+    const val CRISIS                 = "crisis"
+    const val BLOCKED                = "blocked/{packageName}"
+    const val MICROTASK              = "microtask/{taskType}"
+    const val MICROTASK_SUCCESS      = "microtask/success"
 
-    fun journalEntry(entryId: String)    = "journal/$entryId"
-    fun goalDetail(goalId: String)       = "goals/$goalId"
+    fun journalEntry(entryId: String)     = "journal/$entryId"
+    fun goalDetail(goalId: String)        = "goals/$goalId"
     fun wellbeingApp(packageName: String) = "wellbeing/app/$packageName"
-    fun blocked(packageName: String)     = "blocked/$packageName"
-    fun microtask(taskType: String)      = "microtask/$taskType"
+    fun blocked(packageName: String)      = "blocked/$packageName"
+    fun microtask(taskType: String)       = "microtask/$taskType"
 }
 
 // ── NavGraph ──────────────────────────────────────────────────────────────────
@@ -52,32 +61,45 @@ fun ReflektNavGraph(navController: NavHostController) {
     ) {
         // 1. Splash
         composable(Routes.SPLASH) {
-            Text("SplashScreen placeholder")
+            SplashScreen(navController)
         }
 
-        // 2. Onboarding — Demographics
+        // 2. Onboarding — Demographics (owns the shared OnboardingViewModel)
         composable(Routes.ONBOARDING_DEMO) {
-            Text("DemographicsScreen placeholder")
+            val viewModel: OnboardingViewModel = hiltViewModel()
+            DemographicsScreen(viewModel, navController)
         }
 
-        // 3. Onboarding — Status
-        composable(Routes.ONBOARDING_STATUS) {
-            Text("StatusScreen placeholder")
+        // 3. Onboarding — Status (shares OnboardingViewModel scoped to ONBOARDING_DEMO)
+        composable(Routes.ONBOARDING_STATUS) { entry ->
+            val demoEntry = remember(entry) {
+                navController.getBackStackEntry(Routes.ONBOARDING_DEMO)
+            }
+            val viewModel: OnboardingViewModel = hiltViewModel(demoEntry)
+            StatusScreen(viewModel, navController)
         }
 
         // 4. Onboarding — Relations
-        composable(Routes.ONBOARDING_RELATIONS) {
-            Text("RelationMapScreen placeholder")
+        composable(Routes.ONBOARDING_RELATIONS) { entry ->
+            val demoEntry = remember(entry) {
+                navController.getBackStackEntry(Routes.ONBOARDING_DEMO)
+            }
+            val viewModel: OnboardingViewModel = hiltViewModel(demoEntry)
+            RelationMapScreen(viewModel, navController)
         }
 
         // 5. Onboarding — Permissions
-        composable(Routes.ONBOARDING_PERMISSIONS) {
-            Text("PermissionsScreen placeholder")
+        composable(Routes.ONBOARDING_PERMISSIONS) { entry ->
+            val demoEntry = remember(entry) {
+                navController.getBackStackEntry(Routes.ONBOARDING_DEMO)
+            }
+            val viewModel: OnboardingViewModel = hiltViewModel(demoEntry)
+            PermissionsScreen(viewModel, navController)
         }
 
         // 6. Auth — Login
         composable(Routes.AUTH_LOGIN) {
-            Text("AuthScreen placeholder")
+            AuthScreen(navController)
         }
 
         // 7. Home
