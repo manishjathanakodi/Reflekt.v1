@@ -83,4 +83,12 @@ interface JournalEntryDao {
     /** All entries within a calendar day — used to recalculate today's MoodLog aggregate. */
     @Query("SELECT * FROM journal_entry WHERE timestamp >= :startOfDay AND timestamp < :endOfDay AND isDeleted = 0")
     suspend fun getEntriesForDay(startOfDay: Long, endOfDay: Long): List<JournalEntry>
+
+    /** Latest Tier-3 entry — used by CrisisViewModel to populate the clinical summary card. */
+    @Query("SELECT * FROM journal_entry WHERE triageTier = 3 AND isDeleted = 0 ORDER BY timestamp DESC LIMIT 1")
+    suspend fun getLatestTier3(): JournalEntry?
+
+    /** All Tier-3 entries ordered newest first. */
+    @Query("SELECT * FROM journal_entry WHERE triageTier = 3 AND isDeleted = 0 ORDER BY timestamp DESC")
+    fun getAllTier3(): Flow<List<JournalEntry>>
 }

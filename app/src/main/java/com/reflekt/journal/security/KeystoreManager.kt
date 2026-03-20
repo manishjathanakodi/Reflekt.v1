@@ -79,6 +79,21 @@ class KeystoreManager @Inject constructor(
             doFinal(ciphertext)
         }
 
+    /**
+     * Deletes the Keystore entry and clears cached encrypted passphrase.
+     * Called by "Delete All Data" to ensure the DB cannot be re-opened.
+     */
+    fun deleteKey() {
+        cached = null
+        if (keystore.containsAlias(KEY_ALIAS)) {
+            keystore.deleteEntry(KEY_ALIAS)
+        }
+        context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
+            .edit()
+            .clear()
+            .apply()
+    }
+
     private fun getOrCreateKey(): SecretKey {
         if (!keystore.containsAlias(KEY_ALIAS)) {
             KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, ANDROID_KEYSTORE).apply {

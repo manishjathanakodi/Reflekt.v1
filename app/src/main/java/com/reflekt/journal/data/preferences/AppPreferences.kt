@@ -9,8 +9,10 @@ import kotlinx.coroutines.flow.map
 
 val Context.settingsDataStore by preferencesDataStore(name = "settings_prefs")
 
-private val BIOMETRIC_ENABLED_KEY = booleanPreferencesKey("biometric_enabled")
-private val WEEKLY_REPORT_KEY     = stringPreferencesKey("weekly_report")
+private val BIOMETRIC_ENABLED_KEY      = booleanPreferencesKey("biometric_enabled")
+private val WEEKLY_REPORT_KEY          = stringPreferencesKey("weekly_report")
+private val NOTIFICATIONS_ENABLED_KEY  = booleanPreferencesKey("notifications_enabled")
+private val DAILY_REMINDER_TIME_KEY    = stringPreferencesKey("daily_reminder_time")
 
 fun Context.biometricEnabledFlow() =
     settingsDataStore.data.map { prefs -> prefs[BIOMETRIC_ENABLED_KEY] ?: false }
@@ -24,4 +26,18 @@ fun Context.weeklyReportFlow() =
 
 suspend fun Context.setWeeklyReport(report: String) {
     settingsDataStore.edit { prefs -> prefs[WEEKLY_REPORT_KEY] = report }
+}
+
+fun Context.notificationsEnabledFlow() =
+    settingsDataStore.data.map { prefs -> prefs[NOTIFICATIONS_ENABLED_KEY] ?: true }
+
+suspend fun Context.setNotificationsEnabled(enabled: Boolean) {
+    settingsDataStore.edit { prefs -> prefs[NOTIFICATIONS_ENABLED_KEY] = enabled }
+}
+
+fun Context.dailyReminderTimeFlow() =
+    settingsDataStore.data.map { prefs -> prefs[DAILY_REMINDER_TIME_KEY] ?: "21:00" }
+
+suspend fun Context.setDailyReminderTime(time: String) {
+    settingsDataStore.edit { prefs -> prefs[DAILY_REMINDER_TIME_KEY] = time }
 }

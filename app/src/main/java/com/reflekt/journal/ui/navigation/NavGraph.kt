@@ -45,6 +45,10 @@ import com.reflekt.journal.ui.screens.onboarding.StatusScreen
 import com.reflekt.journal.ui.screens.splash.SplashScreen
 import com.reflekt.journal.ui.screens.track.GoalDetailScreen
 import com.reflekt.journal.ui.screens.track.TrackScreen
+import com.reflekt.journal.ui.screens.crisis.CrisisScreen
+import com.reflekt.journal.ui.screens.settings.ExportScreen
+import com.reflekt.journal.ui.screens.settings.ImportScreen
+import com.reflekt.journal.ui.screens.settings.SettingsScreen
 import com.reflekt.journal.ui.screens.wellbeing.MicrotaskScreen
 import com.reflekt.journal.ui.screens.wellbeing.UnlockSuccessScreen
 import com.reflekt.journal.ui.screens.wellbeing.WellbeingScreen
@@ -324,22 +328,22 @@ fun ReflektNavGraph(navController: NavHostController) {
 
         // 19. Settings
         composable(Routes.SETTINGS) {
-            Text("SettingsScreen placeholder")
+            SettingsScreen(navController)
         }
 
         // 20. Settings — Export
         composable(Routes.SETTINGS_EXPORT) {
-            Text("ExportScreen placeholder")
+            ExportScreen(navController)
         }
 
         // 21. Settings — Import
         composable(Routes.SETTINGS_IMPORT) {
-            Text("ImportScreen placeholder")
+            ImportScreen(navController)
         }
 
         // 22. Crisis
         composable(Routes.CRISIS) {
-            Text("CrisisScreen placeholder")
+            CrisisScreen(navController)
         }
 
         // 23. Blocked
