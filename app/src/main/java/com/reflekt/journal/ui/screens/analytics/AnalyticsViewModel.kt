@@ -155,6 +155,9 @@ class AnalyticsViewModel @Inject constructor(
     private val _isGeneratingReport = MutableStateFlow(false)
     val isGeneratingReport: StateFlow<Boolean> = _isGeneratingReport.asStateFlow()
 
+    private val _reportError = MutableStateFlow<String?>(null)
+    val reportError: StateFlow<String?> = _reportError.asStateFlow()
+
     init {
         // Restore cached report from DataStore
         viewModelScope.launch {
@@ -174,6 +177,7 @@ class AnalyticsViewModel @Inject constructor(
      */
     fun generateWeeklyReport() {
         if (_isGeneratingReport.value) return
+        _reportError.value = null
         viewModelScope.launch(Dispatchers.IO) {
             _isGeneratingReport.value = true
             try {
@@ -185,6 +189,7 @@ class AnalyticsViewModel @Inject constructor(
                 context.setWeeklyReport(report)
             } catch (e: Exception) {
                 Log.e(TAG, "generateWeeklyReport failed", e)
+                _reportError.value = e.message ?: "Report generation failed"
             } finally {
                 _isGeneratingReport.value = false
             }

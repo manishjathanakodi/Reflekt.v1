@@ -55,6 +55,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.reflekt.journal.ai.engine.MoodTag
+import com.reflekt.journal.ui.components.EmptyStateCard
+import com.reflekt.journal.ui.components.ErrorCard
 import com.reflekt.journal.ui.navigation.Routes
 import java.time.format.DateTimeFormatter
 import kotlin.math.atan2
@@ -103,6 +105,7 @@ fun AnalyticsScreen(
     val topTriggers     by viewModel.topTriggers.collectAsState()
     val weeklyReport    by viewModel.weeklyReport.collectAsState()
     val isGenerating    by viewModel.isGeneratingReport.collectAsState()
+    val reportError     by viewModel.reportError.collectAsState()
 
     var showReportSheet by remember { mutableStateOf(false) }
 
@@ -123,6 +126,16 @@ fun AnalyticsScreen(
             onPeriodChanged = viewModel::onPeriodChanged,
             modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp),
         )
+
+        // ── Empty state ───────────────────────────────────────────────────────
+        if (distribution.isEmpty() && !isGenerating) {
+            EmptyStateCard(
+                emoji    = "📊",
+                title    = "More data needed",
+                subtitle = "Journal for a few days to unlock mood charts and insights.",
+                modifier = Modifier.padding(horizontal = 16.dp),
+            )
+        }
 
         // ── Mood donut chart ──────────────────────────────────────────────────
         if (distribution.isNotEmpty()) {
@@ -189,6 +202,15 @@ fun AnalyticsScreen(
             TopTriggersCard(
                 triggers = topTriggers,
                 modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp),
+            )
+        }
+
+        // ── Report error ──────────────────────────────────────────────────────
+        if (reportError != null) {
+            ErrorCard(
+                message = reportError!!,
+                onRetry = viewModel::generateWeeklyReport,
+                modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp),
             )
         }
 

@@ -115,9 +115,9 @@ private fun BreathingContent(vm: MicrotaskViewModel) {
             Box(
                 modifier = Modifier
                     .size(36.dp)
-                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp)),
+                    .background(Color(0xFF1E2538), RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center,
-            ) { Text("←", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface) }
+            ) { Text("←", fontSize = 14.sp, color = Color(0xFFEEEAE2)) }
             Text(
                 text      = "Micro-task · 1 of 1",
                 modifier  = Modifier.weight(1f),
@@ -140,7 +140,7 @@ private fun BreathingContent(vm: MicrotaskViewModel) {
         Text(
             text      = "Breathe with the circle",
             style     = MaterialTheme.typography.titleLarge,
-            color     = MaterialTheme.colorScheme.onSurface,
+            color     = Color(0xFFEEEAE2),
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(7.dp))
@@ -280,20 +280,20 @@ fun TimerCard(seconds: Int, totalSeconds: Int) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(18.dp))
+            .background(Color(0xFF1E2538), RoundedCornerShape(18.dp))
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
             text  = "Time remaining",
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = Color(0x80EEEAE2),
         )
         Spacer(Modifier.height(5.dp))
         Text(
             text  = "$minutes:${"%02d".format(secs)}",
             style = MaterialTheme.typography.displaySmall.copy(fontSize = 34.sp),
-            color = MaterialTheme.colorScheme.onSurface,
+            color = Color(0xFFEEEAE2),
         )
         Spacer(Modifier.height(11.dp))
         LinearProgressIndicator(
@@ -328,7 +328,7 @@ private fun BodyScanContent(vm: MicrotaskViewModel) {
         Text(
             text      = "Body Scan Meditation",
             style     = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-            color     = MaterialTheme.colorScheme.onSurface,
+            color     = Color(0xFFEEEAE2),
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(8.dp))
@@ -365,7 +365,7 @@ private fun GratitudeContent(vm: MicrotaskViewModel) {
         Text(
             text      = "Write a Gratitude Note",
             style     = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-            color     = MaterialTheme.colorScheme.onSurface,
+            color     = Color(0xFFEEEAE2),
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(8.dp))

@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.reflekt.journal.data.db.Goal
 import com.reflekt.journal.data.db.HabitLog
+import com.reflekt.journal.ui.components.EmptyStateCard
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.TextStyle
@@ -117,12 +118,13 @@ fun HabitsTab(viewModel: HabitsViewModel) {
 
             if (habits.isEmpty()) {
                 item {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().padding(32.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text("No habits yet — tap + to add one", color = CardMuted, fontSize = 13.sp)
-                    }
+                    EmptyStateCard(
+                        emoji    = "✅",
+                        title    = "No habits yet",
+                        subtitle = "Add your first habit to start tracking your daily routines.",
+                        ctaLabel = "Add habit",
+                        onCta    = { showCreateSheet = true },
+                    )
                 }
             }
 

@@ -141,7 +141,7 @@ fun UnlockSuccessScreen(navController: NavController) {
             Text(
                 text      = "Well done.",
                 style     = MaterialTheme.typography.headlineMedium,
-                color     = MaterialTheme.colorScheme.onSurface,
+                color     = MaterialTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(9.dp))
@@ -213,11 +213,15 @@ private fun StatCards(streak: Int, accessWindow: String, totalTasks: Int) {
     }
 }
 
+private val CardBg   = Color(0xFF1E2538)
+private val CardText = Color(0xFFEEEAE2)
+private val CardMuted = Color(0x80EEEAE2)
+
 @Composable
 private fun StatMiniCard(modifier: Modifier, emoji: String, value: String, label: String) {
     Column(
         modifier = modifier
-            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
+            .background(CardBg, RoundedCornerShape(16.dp))
             .padding(13.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -226,12 +230,12 @@ private fun StatMiniCard(modifier: Modifier, emoji: String, value: String, label
         Text(
             text  = value,
             style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp),
-            color = MaterialTheme.colorScheme.onSurface,
+            color = CardText,
         )
         Text(
             text  = label,
             style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = CardMuted,
         )
     }
 }
@@ -246,7 +250,7 @@ private fun AccessTimerCard(timerMs: Long, progress: Float, packageName: String)
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
+            .background(CardBg, RoundedCornerShape(16.dp))
             .padding(14.dp),
     ) {
         Row(
@@ -257,7 +261,7 @@ private fun AccessTimerCard(timerMs: Long, progress: Float, packageName: String)
             Text(
                 text  = "App access",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = CardMuted,
             )
             Text(
                 text  = timeStr,

@@ -20,7 +20,7 @@ Cards (#1A2030), inputs (#1E2538), chat bubbles → stay dark in both modes.
 Use darkColorScheme() as base for LightColorScheme too.
 
 ## Current Phase
-Phase 9 — Crisis UI, Settings & Data Portability
+Phase 10 — Polish & QA
 
 ## Verification
 I build in Android Studio after each phase and report errors back.

@@ -62,6 +62,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.reflekt.journal.ui.components.EmptyStateCard
 import com.reflekt.journal.ui.navigation.Routes
 import java.time.Instant
 import java.time.LocalDate
@@ -128,9 +129,13 @@ fun GoalsTab(navController: NavController, viewModel: HabitsViewModel) {
 
             if (activeGoals.isEmpty()) {
                 item {
-                    Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                        Text("No goals yet — tap + to add one", color = CardMuted, fontSize = 13.sp)
-                    }
+                    EmptyStateCard(
+                        emoji    = "🎯",
+                        title    = "No goals yet",
+                        subtitle = "Set a goal to track your progress and stay motivated.",
+                        ctaLabel = "Add goal",
+                        onCta    = { showSheet = true },
+                    )
                 }
             }
 

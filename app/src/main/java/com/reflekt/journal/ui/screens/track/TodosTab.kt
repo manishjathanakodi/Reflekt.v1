@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.reflekt.journal.data.db.Goal
 import com.reflekt.journal.data.db.Todo
+import com.reflekt.journal.ui.components.EmptyStateCard
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -179,9 +180,11 @@ fun TodosTab(viewModel: HabitsViewModel) {
 
             if (overdue.isEmpty() && todayList.isEmpty() && upcoming.isEmpty() && completed.isEmpty()) {
                 item {
-                    Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                        Text("No todos yet — tap + to add one", color = CardMuted, fontSize = 13.sp)
-                    }
+                    EmptyStateCard(
+                        emoji    = "✓",
+                        title    = "All clear",
+                        subtitle = "No todos right now. Tap + to add something.",
+                    )
                 }
             }
 

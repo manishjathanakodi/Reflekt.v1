@@ -63,6 +63,7 @@ import com.reflekt.journal.ai.engine.MoodTag
 import com.reflekt.journal.data.db.JournalEntry
 import com.reflekt.journal.data.db.MoodLog
 import com.reflekt.journal.ui.components.AiTagBadge
+import com.reflekt.journal.ui.components.EmptyStateCard
 import com.reflekt.journal.ui.components.MoodBadge
 import com.reflekt.journal.ui.components.TriggerChip
 import com.reflekt.journal.ui.navigation.Routes
@@ -193,13 +194,11 @@ fun HistoryScreen(
             // ── Empty state ───────────────────────────────────────────────────
             if (entries.loadState.refresh !is LoadState.Loading && entries.itemCount == 0) {
                 item(key = "empty") {
-                    Box(Modifier.fillMaxWidth().padding(48.dp), Alignment.Center) {
-                        Text(
-                            "No entries yet",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = CardMuted,
-                        )
-                    }
+                    EmptyStateCard(
+                        emoji    = "📖",
+                        title    = "Nothing here yet",
+                        subtitle = "Start your first journal entry to see it here.",
+                    )
                 }
             }
 

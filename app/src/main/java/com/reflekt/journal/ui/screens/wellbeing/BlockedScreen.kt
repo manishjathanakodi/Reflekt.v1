@@ -185,7 +185,7 @@ private fun ReasonHeadline() {
     Text(
         text      = "Time for a breather.",
         style     = MaterialTheme.typography.headlineSmall,
-        color     = MaterialTheme.colorScheme.onSurface,
+        color     = MaterialTheme.colorScheme.onBackground,
         textAlign = TextAlign.Center,
     )
 }
@@ -205,7 +205,7 @@ fun MicrotaskOptionsCard(onSelect: (String) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(18.dp))
+            .background(Color(0xFF1E2538), RoundedCornerShape(18.dp))
             .padding(16.dp),
     ) {
         Text(
@@ -248,7 +248,7 @@ private fun MicrotaskOption(emoji: String, title: String, subtitle: String, onCl
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(13.dp))
+            .background(Color(0xFF252D44), RoundedCornerShape(13.dp))
             .clickable(onClick = onClick)
             .padding(13.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -259,7 +259,7 @@ private fun MicrotaskOption(emoji: String, title: String, subtitle: String, onCl
             Text(
                 text  = title,
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                color = MaterialTheme.colorScheme.onSurface,
+                color = Color(0xFFEEEAE2),
             )
             Text(
                 text  = subtitle,

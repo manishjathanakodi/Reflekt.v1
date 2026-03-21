@@ -148,7 +148,7 @@ fun StatSummaryRow(summary: ScreenTimeSummary) {
             modifier = Modifier.weight(1f),
             label    = "${summary.pickupCount}",
             sub      = "Avg 52/day",
-            subColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            subColor = CardText.copy(alpha = 0.5f),
         )
         StatCard(
             modifier = Modifier.weight(1f),
@@ -163,17 +163,20 @@ fun StatSummaryRow(summary: ScreenTimeSummary) {
     }
 }
 
+private val CardBg  = Color(0xFF1E2538)
+private val CardText = Color(0xFFEEEAE2)
+
 @Composable
 private fun StatCard(
     modifier: Modifier,
     label: String,
-    labelColor: Color = MaterialTheme.colorScheme.onSurface,
+    labelColor: Color = CardText,
     sub: String,
     subColor: Color,
 ) {
     Box(
         modifier = modifier
-            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(18.dp))
+            .background(CardBg, RoundedCornerShape(18.dp))
             .padding(13.dp),
     ) {
         Column {
@@ -237,7 +240,7 @@ fun AiInsightBanner(insight: String) {
             Text(
                 text  = insight,
                 style = MaterialTheme.typography.bodySmall.copy(lineHeight = 20.sp),
-                color = MaterialTheme.colorScheme.onSurface,
+                color = CardText,
             )
         }
     }
@@ -251,7 +254,7 @@ fun MoodUsageHeatmap(cells: List<HeatmapCell>) {
         modifier = Modifier
             .padding(horizontal = 22.dp, vertical = 7.dp)
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(18.dp))
+            .background(CardBg, RoundedCornerShape(18.dp))
             .padding(15.dp),
     ) {
         Column {
@@ -405,7 +408,7 @@ fun TriggerAppCard(
         modifier = Modifier
             .padding(horizontal = 22.dp, vertical = 4.dp)
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
+            .background(CardBg, RoundedCornerShape(16.dp))
             .border(1.dp, borderColor, RoundedCornerShape(16.dp))
             .padding(13.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -428,7 +431,7 @@ fun TriggerAppCard(
             Text(
                 text  = log.appLabel,
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onSurface,
+                color = CardText,
             )
             Text(
                 text  = "${totalMin}min today · $impactLabel",
