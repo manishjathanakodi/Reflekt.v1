@@ -24,6 +24,7 @@ import javax.inject.Inject
 sealed interface JournalNavEvent {
     object NavigateToSaved : JournalNavEvent
     object NavigateToCrisis : JournalNavEvent
+    object ShowClosingDialog : JournalNavEvent
 }
 
 data class JournalFormState(
@@ -79,10 +80,6 @@ class JournalViewModel @Inject constructor(
         selectedQuote = QUOTES[dayOfYear % QUOTES.size]
     }
 
-    fun onInitialMoodSelected(mood: MoodTag) {
-        _formState.value = _formState.value.copy(initialMood = mood)
-    }
-
     fun onAffirmationChanged(text: String) {
         _formState.value = _formState.value.copy(affirmation = text)
     }
@@ -115,11 +112,23 @@ class JournalViewModel @Inject constructor(
         _formState.value = _formState.value.copy(tomorrowIntent = text)
     }
 
-    fun onClosingMoodSelected(mood: MoodTag) {
-        _formState.value = _formState.value.copy(closingMood = mood)
+    fun onSave() {
+        if (_isSaving.value) return
+        viewModelScope.launch {
+            _navEvent.send(JournalNavEvent.ShowClosingDialog)
+        }
     }
 
-    fun onSave() {
+    fun onClosingMoodSet(mood: MoodTag) {
+        _formState.value = _formState.value.copy(closingMood = mood)
+        saveEntry()
+    }
+
+    fun onClosingDialogSkipped() {
+        saveEntry()
+    }
+
+    private fun saveEntry() {
         if (_isSaving.value) return
         viewModelScope.launch(Dispatchers.IO) {
             _isSaving.value = true
@@ -204,14 +213,12 @@ class JournalViewModel @Inject constructor(
 
     private fun countFilledSections(form: JournalFormState): Int {
         var count = 0
-        if (form.initialMood != null) count++
         if (form.affirmation.isNotBlank()) count++
         if (form.gratitude1.isNotBlank() || form.gratitude2.isNotBlank() || form.gratitude3.isNotBlank()) count++
         if (form.bestPartOfDay.isNotBlank()) count++
         if (form.challenge.isNotBlank()) count++
         if (form.freeWrite.isNotBlank()) count++
         if (form.tomorrowIntent.isNotBlank()) count++
-        if (form.closingMood != null) count++
         return count
     }
 

@@ -1,8 +1,6 @@
 package com.reflekt.journal.ui.screens.journal
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,6 +33,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,6 +49,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.reflekt.journal.ai.engine.MoodTag
+import com.reflekt.journal.ui.components.MoodCheckInDialog
 import com.reflekt.journal.ui.navigation.Routes
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -61,15 +63,6 @@ private val JSage     = Color(0xFF6FA880)
 private val JCardText = Color(0xFFEEEAE2)
 private val JMuted    = Color(0x80EEEAE2)
 
-private val MOOD_OPTIONS = listOf(
-    MoodTag.HAPPY   to "😊",
-    MoodTag.SAD     to "😔",
-    MoodTag.ANGRY   to "😤",
-    MoodTag.ANXIOUS to "😰",
-    MoodTag.NEUTRAL to "😐",
-    MoodTag.FEAR    to "😨",
-)
-
 @Composable
 fun JournalEntryScreen(
     navController: NavController,
@@ -78,6 +71,7 @@ fun JournalEntryScreen(
     val form       by viewModel.formState.collectAsState()
     val isSaving   by viewModel.isSaving.collectAsState()
     val filled     = countFilledSections(form)
+    var showClosingDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.navEvent.collect { event ->
@@ -86,8 +80,23 @@ fun JournalEntryScreen(
                     popUpTo(Routes.JOURNAL_NEW) { inclusive = true }
                 }
                 JournalNavEvent.NavigateToSaved -> navController.navigate(Routes.JOURNAL_SAVED)
+                JournalNavEvent.ShowClosingDialog -> showClosingDialog = true
             }
         }
+    }
+
+    if (showClosingDialog) {
+        MoodCheckInDialog(
+            isOpening = false,
+            onMoodSelected = { mood ->
+                showClosingDialog = false
+                viewModel.onClosingMoodSet(mood)
+            },
+            onSkip = {
+                showClosingDialog = false
+                viewModel.onClosingDialogSkipped()
+            },
+        )
     }
 
     Column(
@@ -103,7 +112,7 @@ fun JournalEntryScreen(
             onBack = { navController.popBackStack() },
             onSave = { viewModel.onSave() },
             filled = filled,
-            total = 8,
+            total = 6,
             isSaving = isSaving,
         )
 
@@ -118,15 +127,7 @@ fun JournalEntryScreen(
         ) {
             Spacer(Modifier.height(4.dp))
 
-            // 1. Opening mood
-            SectionCard(label = "How are you feeling right now?") {
-                InlineMoodPicker(
-                    selected = form.initialMood,
-                    onSelect = viewModel::onInitialMoodSelected,
-                )
-            }
-
-            // 2. Affirmation
+            // 1. Affirmation
             SectionCard(label = "Today's affirmation") {
                 JournalTextField(
                     value = form.affirmation,
@@ -190,14 +191,6 @@ fun JournalEntryScreen(
                     value = form.tomorrowIntent,
                     onValueChange = viewModel::onTomorrowIntentChanged,
                     placeholder = "One thing I want to do or be...",
-                )
-            }
-
-            // 10. Closing mood
-            SectionCard(label = "How are you feeling now?") {
-                InlineMoodPicker(
-                    selected = form.closingMood,
-                    onSelect = viewModel::onClosingMoodSelected,
                 )
             }
 
@@ -336,50 +329,6 @@ private fun SectionCard(label: String, content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun InlineMoodPicker(selected: MoodTag?, onSelect: (MoodTag) -> Unit) {
-    val rows = MOOD_OPTIONS.chunked(3)
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        rows.forEach { row ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                row.forEach { (mood, emoji) ->
-                    val isSelected = selected == mood
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(if (isSelected) JGold.copy(alpha = 0.15f) else JInputBg)
-                            .border(
-                                width = if (isSelected) 1.5.dp else 1.dp,
-                                color = if (isSelected) JGold else Color.Transparent,
-                                shape = RoundedCornerShape(12.dp),
-                            )
-                            .clickable { onSelect(mood) }
-                            .padding(vertical = 10.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(3.dp),
-                        ) {
-                            Text(emoji, fontSize = 20.sp)
-                            Text(
-                                mood.name.lowercase().replaceFirstChar { it.uppercase() },
-                                fontSize = 9.sp,
-                                color = if (isSelected) JGold else JMuted,
-                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun JournalTextField(
     value: String,
     onValueChange: (String) -> Unit,
@@ -408,16 +357,14 @@ private fun JournalTextField(
     )
 }
 
-// Counts how many of the 8 sections are filled
+// Counts how many of the 6 sections are filled (moods are captured via popups)
 private fun countFilledSections(form: JournalFormState): Int {
     var count = 0
-    if (form.initialMood != null) count++
     if (form.affirmation.isNotBlank()) count++
     if (form.gratitude1.isNotBlank() || form.gratitude2.isNotBlank() || form.gratitude3.isNotBlank()) count++
     if (form.bestPartOfDay.isNotBlank()) count++
     if (form.challenge.isNotBlank()) count++
     if (form.freeWrite.isNotBlank()) count++
     if (form.tomorrowIntent.isNotBlank()) count++
-    if (form.closingMood != null) count++
     return count
 }

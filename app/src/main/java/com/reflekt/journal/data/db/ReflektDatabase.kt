@@ -19,8 +19,9 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         Todo::class,
         Goal::class,
         Resource::class,
+        ManualAppLimit::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 abstract class ReflektDatabase : RoomDatabase() {
@@ -35,6 +36,7 @@ abstract class ReflektDatabase : RoomDatabase() {
     abstract fun todoDao(): TodoDao
     abstract fun goalDao(): GoalDao
     abstract fun resourceDao(): ResourceDao
+    abstract fun manualAppLimitDao(): ManualAppLimitDao
 
     companion object {
         /**

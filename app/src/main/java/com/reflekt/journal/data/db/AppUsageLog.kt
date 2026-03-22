@@ -4,7 +4,7 @@ import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
-/** Per-app daily usage record. Populated by UsageStatsWorker. */
+/** Per-app daily usage record. */
 @Entity(
     tableName = "app_usage_log",
     indices = [Index(value = ["date", "packageName"])],

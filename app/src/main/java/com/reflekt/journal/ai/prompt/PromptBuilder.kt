@@ -110,6 +110,37 @@ Until the Done signal, ONLY have a natural conversation. Never output JSON mid-c
         """.trimIndent()
     }
 
+    /**
+     * Wraps a system prompt + conversation history in Gemma 3 instruction format.
+     * Each turn is a (role, content) pair where role is "user" or "ai".
+     */
+    fun formatForGemma3(
+        systemPrompt: String,
+        turns: List<Pair<String, String>>,
+    ): String {
+        val sb = StringBuilder()
+        sb.append("<start_of_turn>system\n")
+        sb.append(systemPrompt)
+        sb.append("<end_of_turn>\n")
+        turns.forEach { (role, content) ->
+            when (role) {
+                "user" -> {
+                    sb.append("<start_of_turn>user\n")
+                    sb.append(content)
+                    sb.append("<end_of_turn>\n")
+                }
+                "ai" -> {
+                    sb.append("<start_of_turn>model\n")
+                    sb.append(content)
+                    sb.append("<end_of_turn>\n")
+                }
+            }
+        }
+        // Signal model to respond
+        sb.append("<start_of_turn>model\n")
+        return sb.toString()
+    }
+
     private fun parseRelationMap(jsonStr: String): String {
         return try {
             Json.decodeFromString<List<Map<String, String>>>(jsonStr)

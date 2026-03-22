@@ -6,8 +6,7 @@ import dagger.hilt.components.SingletonComponent
 
 /**
  * Wellbeing DI module.
- * [UsageStatsRepository] and [CorrelationEngine] are @Singleton @Inject constructor
- * classes that Hilt provides automatically — no explicit @Provides needed.
+ * [UsageStatsRepository] is a @Singleton @Inject constructor class — Hilt provides it automatically.
  */
 @Module
 @InstallIn(SingletonComponent::class)

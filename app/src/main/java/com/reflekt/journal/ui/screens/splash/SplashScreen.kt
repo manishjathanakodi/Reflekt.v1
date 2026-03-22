@@ -47,18 +47,16 @@ fun SplashScreen(
 ) {
     val destination by viewModel.destination.collectAsState()
 
+    // Only auto-navigate returning users (Auth/Home). New users must tap "Begin your journey".
     LaunchedEffect(destination) {
         when (destination) {
-            SplashDestination.Onboarding -> navController.navigate(Routes.ONBOARDING_DEMO) {
-                popUpTo(Routes.SPLASH) { inclusive = true }
-            }
             SplashDestination.Auth -> navController.navigate(Routes.AUTH_LOGIN) {
                 popUpTo(Routes.SPLASH) { inclusive = true }
             }
             SplashDestination.Home -> navController.navigate(Routes.HOME) {
                 popUpTo(Routes.SPLASH) { inclusive = true }
             }
-            null -> Unit
+            else -> Unit
         }
     }
 

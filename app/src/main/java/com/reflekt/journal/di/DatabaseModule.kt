@@ -3,6 +3,7 @@ package com.reflekt.journal.di
 import android.content.Context
 import com.reflekt.journal.data.db.AppUsageLogDao
 import com.reflekt.journal.data.db.GoalDao
+import com.reflekt.journal.data.db.ManualAppLimitDao
 import com.reflekt.journal.data.db.HabitDao
 import com.reflekt.journal.data.db.HabitLogDao
 import com.reflekt.journal.data.db.InterventionDao
@@ -57,4 +58,6 @@ object DatabaseModule {
     @Provides fun provideGoalDao(db: ReflektDatabase): GoalDao = db.goalDao()
 
     @Provides fun provideResourceDao(db: ReflektDatabase): ResourceDao = db.resourceDao()
+
+    @Provides fun provideManualAppLimitDao(db: ReflektDatabase): ManualAppLimitDao = db.manualAppLimitDao()
 }

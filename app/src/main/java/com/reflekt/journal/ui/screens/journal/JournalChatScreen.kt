@@ -1,7 +1,9 @@
 package com.reflekt.journal.ui.screens.journal
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -80,7 +82,8 @@ fun JournalChatScreen(
 ) {
     val conversation    by viewModel.conversation.collectAsState()
     val isGenerating    by viewModel.isGenerating.collectAsState()
-    val isInitializing  by viewModel.isInitializing.collectAsState()
+    val isAiLoading     by viewModel.isAiLoading.collectAsState()
+    val isAiReady       by viewModel.isAiReady.collectAsState()
     val liveAnalysis    by viewModel.liveAnalysis.collectAsState()
     val snapshot        by viewModel.accountabilitySnapshot.collectAsState()
     val inputText       by viewModel.inputText.collectAsState()
@@ -145,7 +148,11 @@ fun JournalChatScreen(
                 onDone = { viewModel.onDone() },
             )
 
-            AnimatedVisibility(visible = isInitializing) {
+            AnimatedVisibility(
+                visible = isAiLoading,
+                enter = expandVertically(),
+                exit = shrinkVertically(),
+            ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -160,7 +167,8 @@ fun JournalChatScreen(
                         strokeWidth = 2.dp,
                     )
                     Text(
-                        "AI model loading — first launch only...",
+                        text = if (isAiReady) "AI ready ✓"
+                               else "AI loading — first launch takes ~30 seconds...",
                         fontSize = 12.sp,
                         color = ChatCardText.copy(alpha = 0.7f),
                     )
@@ -205,7 +213,7 @@ fun JournalChatScreen(
                 text = inputText,
                 onTextChange = { viewModel.onInputChanged(it) },
                 onSend = { viewModel.onSendMessage(inputText) },
-                enabled = !isGenerating && !isInitializing,
+                enabled = !isGenerating && !isAiLoading,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
         }

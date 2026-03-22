@@ -97,7 +97,8 @@ class JournalChatViewModel @Inject constructor(
     @Volatile private var analysisComplete = false
     private val _parsedAnalysis = MutableStateFlow<com.reflekt.journal.ai.engine.JournalAnalysis?>(null)
 
-    val isInitializing: StateFlow<Boolean> = llmEngine.isInitializing
+    val isAiLoading: StateFlow<Boolean> = llmEngine.isInitializing
+    val isAiReady: StateFlow<Boolean> = llmEngine.isInitialized
 
     private val _isGenerating = MutableStateFlow(false)
     val isGenerating: StateFlow<Boolean> = _isGenerating.asStateFlow()
@@ -401,20 +402,15 @@ class JournalChatViewModel @Inject constructor(
         conversation: List<ChatMessage>,
         newUserMessage: String,
     ): String {
-        val sb = StringBuilder()
-        sb.append(systemPrompt)
-        sb.append("\n\n")
-        sb.append(accountabilityContext)
-        sb.append("\n\nConversation so far:\n")
-        conversation.forEach { msg ->
+        val fullSystem = if (accountabilityContext.isBlank()) systemPrompt
+                         else "$systemPrompt\n\n$accountabilityContext"
+        val turns = conversation.map { msg ->
             when (msg) {
-                is ChatMessage.AiMessage -> sb.append("Assistant: ${msg.text}\n")
-                is ChatMessage.UserMessage -> sb.append("User: ${msg.text}\n")
+                is ChatMessage.AiMessage   -> "ai" to msg.text
+                is ChatMessage.UserMessage -> "user" to msg.text
             }
-        }
-        sb.append("User: $newUserMessage\n")
-        sb.append("Assistant:")
-        return sb.toString()
+        } + listOf("user" to newUserMessage)
+        return promptBuilder.formatForGemma3(fullSystem, turns)
     }
 
     private fun isJsonResponse(text: String): Boolean {

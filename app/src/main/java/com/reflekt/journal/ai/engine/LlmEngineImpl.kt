@@ -23,26 +23,31 @@ class LlmEngineImpl @Inject constructor(
     private var llm: LlmInference? = null
     private var useStub = false
 
-    override val isInitialized = MutableStateFlow(false)
-    override val isInitializing = MutableStateFlow(false)
+    private val _isInitializing = MutableStateFlow(false)
+    override val isInitializing: StateFlow<Boolean> = _isInitializing
+
+    private val _isInitialized = MutableStateFlow(false)
+    override val isInitialized: StateFlow<Boolean> = _isInitialized
 
     override suspend fun initialize() = withContext(Dispatchers.IO) {
-        if (isInitialized.value || isInitializing.value) return@withContext
-        isInitializing.value = true
+        if (_isInitialized.value || _isInitializing.value) return@withContext
+        _isInitializing.value = true
         try {
-            val modelFile = File(context.filesDir, MODEL_ASSET)
+            val modelDir = File(context.filesDir, "models")
+            modelDir.mkdirs()
+            val modelFile = File(modelDir, "gemma-3-1b-it-q4_0.gguf")
 
-            // Copy from assets to internal storage on first launch
-            // (MediaPipe needs a file path, not an asset stream)
             if (!modelFile.exists()) {
-                modelFile.parentFile?.mkdirs()
+                Log.i(TAG, "Copying model from assets...")
                 context.assets.open(MODEL_ASSET).use { input ->
                     modelFile.outputStream().use { output ->
-                        input.copyTo(output)
+                        input.copyTo(output, bufferSize = 8192)
                     }
                 }
+                Log.i(TAG, "Model copied ✓")
             }
 
+            Log.i(TAG, "Loading model...")
             val options = LlmInference.LlmInferenceOptions.builder()
                 .setModelPath(modelFile.absolutePath)
                 .setMaxTokens(512)
@@ -53,24 +58,26 @@ class LlmEngineImpl @Inject constructor(
 
             llm = LlmInference.createFromOptions(context, options)
             useStub = false
-            isInitialized.value = true
-            Log.i(TAG, "Gemma 3 1B loaded ✓")
+            _isInitialized.value = true
+            Log.i(TAG, "Gemma 3 1B loaded successfully ✓")
         } catch (e: Exception) {
-            Log.e(TAG, "Model load failed, using stub", e)
+            Log.e(TAG, "Failed to load model: ${e.message}", e)
             useStub = true
-            isInitialized.value = true // mark done even in stub mode so callers unblock
+            _isInitialized.value = false
         } finally {
-            isInitializing.value = false
+            _isInitializing.value = false
         }
     }
 
     override suspend fun generate(prompt: String): String = withContext(Dispatchers.IO) {
-        if (!isInitialized.value) initialize()
-        if (useStub) return@withContext stubResponse(prompt)
-        try {
+        if (useStub) {
+            Log.w(TAG, "Using stub — model not loaded")
+            return@withContext stubResponse(prompt)
+        }
+        return@withContext try {
             llm?.generateResponse(prompt) ?: stubResponse(prompt)
         } catch (e: Exception) {
-            Log.e(TAG, "Generation error", e)
+            Log.e(TAG, "Generation failed: ${e.message}", e)
             stubResponse(prompt)
         }
     }

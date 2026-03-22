@@ -27,4 +27,10 @@ interface InterventionDao {
 
     @Query("SELECT * FROM intervention WHERE status = 'PENDING' ORDER BY timestamp DESC")
     fun getPending(): Flow<List<Intervention>>
+
+    @Query("SELECT * FROM intervention WHERE status = 'ACTIVE' ORDER BY timestamp DESC")
+    fun getActive(): Flow<List<Intervention>>
+
+    @Query("DELETE FROM intervention WHERE packageName = :packageName AND status = 'ACTIVE'")
+    suspend fun deleteActiveByPackage(packageName: String)
 }

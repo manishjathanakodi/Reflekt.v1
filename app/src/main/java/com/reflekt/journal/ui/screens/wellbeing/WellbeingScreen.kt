@@ -1,6 +1,6 @@
 package com.reflekt.journal.ui.screens.wellbeing
 
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,9 +16,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -26,43 +27,55 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.graphics.drawable.toBitmap
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.reflekt.journal.data.db.ManualAppLimit
+import com.reflekt.journal.ui.components.EmptyStateCard
 import com.reflekt.journal.ui.components.PrimaryButton
+import com.reflekt.journal.ui.navigation.Routes
 import com.reflekt.journal.ui.theme.DarkError
 import com.reflekt.journal.ui.theme.DarkSecondary
 import com.reflekt.journal.ui.theme.DarkTertiary
-import java.time.DayOfWeek
 import kotlin.math.abs
 
-// Colours used in this screen
-private val Blush   = DarkError          // #D4756A
-private val Sage    = DarkSecondary      // #6FA880
-private val Lav     = DarkTertiary       // #9B85C8
-private val Amber   = Color(0xFFE8A84D)
-private val Sky     = Color(0xFF5F9FC4)
+private val Blush = DarkError        // #D4756A
+private val Sage  = DarkSecondary   // #6FA880
+private val Lav   = DarkTertiary    // #9B85C8
+private val Amber = Color(0xFFE8A84D)
+private val Sky   = Color(0xFF5F9FC4)
+private val Gold  = Color(0xFFC9A96E)
+private val CardBg   = Color(0xFF1E2538)
+private val CardText = Color(0xFFEEEAE2)
 
 @Composable
 fun WellbeingScreen(navController: NavController) {
     val vm: WellbeingViewModel = hiltViewModel()
-    val hasPermission   by vm.usagePermissionGranted.collectAsState()
-    val summary         by vm.screenTimeSummary.collectAsState()
-    val insight         by vm.aiInsight.collectAsState()
-    val heatmap         by vm.heatmapData.collectAsState()
-    val triggerApps     by vm.triggerApps.collectAsState()
-    val context = LocalContext.current
+    val hasPermission  by vm.usagePermissionGranted.collectAsState()
+    val summary        by vm.screenTimeSummary.collectAsState()
+    val appLimits      by vm.appLimits.collectAsState()
+    val installedApps  by vm.installedApps.collectAsState()
+    val todayUsageMap  by vm.todayUsageMap.collectAsState()
+    val context        = LocalContext.current
 
-    // Refresh permission when screen appears (user may have granted it)
+    var showAddSheet   by remember { mutableStateOf(false) }
+    var editingLimit   by remember { mutableStateOf<ManualAppLimit?>(null) }
+
     LaunchedEffect(Unit) { vm.refreshPermission() }
 
     Column(
@@ -78,35 +91,76 @@ fun WellbeingScreen(navController: NavController) {
             return@Column
         }
 
+        // ── Section A: Screen Time Summary ───────────────────────────────────
         StatSummaryRow(summary = summary)
 
-        AnimatedVisibility(visible = insight.isNotBlank()) {
-            AiInsightBanner(insight = insight)
+        // ── Section B: Breathing Quick Access ────────────────────────────────
+        BreathingQuickAccessCard(onClick = { navController.navigate(Routes.microtask("BREATHING")) })
+
+        // ── Section C: My App Limits ─────────────────────────────────────────
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 22.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text  = "My App Limits",
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            Text(
+                text     = "+ Add app",
+                style    = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                color    = Gold,
+                modifier = Modifier.clickable { showAddSheet = true },
+            )
         }
 
-        MoodUsageHeatmap(cells = heatmap)
-
-        if (triggerApps.isNotEmpty()) {
-            Text(
-                text = "Trigger Apps",
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.padding(horizontal = 22.dp, vertical = 8.dp),
+        if (appLimits.isEmpty()) {
+            EmptyStateCard(
+                emoji    = "📵",
+                title    = "No app limits yet",
+                subtitle = "Add apps you want to be more mindful about. Reflekt will remind you when you've hit your limit.",
+                ctaLabel = "+ Add your first app",
+                onCta    = { showAddSheet = true },
+                modifier = Modifier.padding(horizontal = 22.dp),
             )
-            triggerApps.forEach { app ->
-                TriggerAppCard(
-                    app       = app,
-                    onLimit   = { /* future: create Intervention */ },
-                    onWatch   = { },
+        } else {
+            appLimits.forEach { limit ->
+                AppLimitCard(
+                    limit        = limit,
+                    todayUsageMs = todayUsageMap[limit.packageName],
+                    hasPermission = hasPermission,
+                    onEdit       = { editingLimit = limit; showAddSheet = true },
+                    onRemove     = { vm.removeLimit(limit.packageName) },
                 )
             }
         }
 
         Spacer(Modifier.height(24.dp))
     }
+
+    // ── Add / Edit sheet ─────────────────────────────────────────────────────
+    if (showAddSheet) {
+        AddAppLimitSheet(
+            installedApps = installedApps,
+            existingLimit = editingLimit,
+            onSave        = { limit ->
+                vm.addLimit(limit)
+                showAddSheet = false
+                editingLimit = null
+            },
+            onDismiss     = {
+                showAddSheet = false
+                editingLimit = null
+            },
+        )
+    }
 }
 
-// ── Header ─────────────────────────────────────────────────────────────────────
+// ── Header ────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun WellbeingHeader() {
@@ -121,14 +175,14 @@ private fun WellbeingHeader() {
             color = MaterialTheme.colorScheme.onBackground,
         )
         Text(
-            text  = "Screen time & mood correlation",
+            text  = "Screen time & mindful limits",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
 
-// ── Stat Summary Row ───────────────────────────────────────────────────────────
+// ── Stat Summary Row ──────────────────────────────────────────────────────────
 
 @Composable
 fun StatSummaryRow(summary: ScreenTimeSummary) {
@@ -139,32 +193,29 @@ fun StatSummaryRow(summary: ScreenTimeSummary) {
         horizontalArrangement = Arrangement.spacedBy(9.dp),
     ) {
         StatCard(
-            modifier = Modifier.weight(1f),
-            label    = formatDuration(summary.totalMs),
-            sub      = buildDeltaLabel(summary.vsGoalMs),
-            subColor = if (summary.vsGoalMs > 0) Blush else Sage,
+            modifier  = Modifier.weight(1f),
+            label     = formatDuration(summary.totalMs),
+            sub       = buildDeltaLabel(summary.vsGoalMs),
+            subColor  = if (summary.vsGoalMs > 0) Blush else Sage,
         )
         StatCard(
-            modifier = Modifier.weight(1f),
-            label    = "${summary.pickupCount}",
-            sub      = "Avg 52/day",
-            subColor = CardText.copy(alpha = 0.5f),
+            modifier  = Modifier.weight(1f),
+            label     = "${summary.pickupCount}",
+            sub       = "pickups today",
+            subColor  = CardText.copy(alpha = 0.5f),
         )
         StatCard(
-            modifier = Modifier.weight(1f),
-            label    = "${"%.1f".format(summary.moodScore)} / 10",
+            modifier   = Modifier.weight(1f),
+            label      = "${"%.1f".format(summary.moodScore)} / 10",
             labelColor = Lav,
-            sub      = if (summary.moodTrend >= 0)
+            sub        = if (summary.moodTrend >= 0)
                 "↑ from ${"%.1f".format(summary.moodScore - summary.moodTrend)}"
             else
                 "↓ from ${"%.1f".format(summary.moodScore - summary.moodTrend)}",
-            subColor = if (summary.moodTrend < 0) Blush else Sage,
+            subColor   = if (summary.moodTrend < 0) Blush else Sage,
         )
     }
 }
-
-private val CardBg  = Color(0xFF1E2538)
-private val CardText = Color(0xFFEEEAE2)
 
 @Composable
 private fun StatCard(
@@ -197,8 +248,7 @@ private fun StatCard(
 
 private fun formatDuration(ms: Long): String {
     val totalMin = ms / 60_000
-    val h = totalMin / 60
-    val m = totalMin % 60
+    val h = totalMin / 60; val m = totalMin % 60
     return if (h > 0) "${h}h ${m}m" else "${m}m"
 }
 
@@ -207,266 +257,221 @@ private fun buildDeltaLabel(vsGoalMs: Long): String {
     return if (vsGoalMs > 0) "↑ ${absMins}min vs goal" else "↓ ${absMins}min vs goal"
 }
 
-// ── AI Insight Banner ──────────────────────────────────────────────────────────
+// ── Breathing Quick Access Card ───────────────────────────────────────────────
 
 @Composable
-fun AiInsightBanner(insight: String) {
-    Box(
+private fun BreathingQuickAccessCard(onClick: () -> Unit) {
+    Row(
         modifier = Modifier
             .padding(horizontal = 22.dp, vertical = 7.dp)
             .fillMaxWidth()
-            .background(
-                brush = Brush.linearGradient(
-                    listOf(
-                        Lav.copy(alpha = 0.15f),
-                        Sky.copy(alpha = 0.08f),
-                    )
-                ),
-                shape = RoundedCornerShape(18.dp),
-            )
-            .border(1.dp, Lav.copy(alpha = 0.25f), RoundedCornerShape(18.dp))
-            .padding(15.dp),
+            .background(CardBg, RoundedCornerShape(16.dp))
+            .border(1.dp, Sky.copy(alpha = 0.25f), RoundedCornerShape(16.dp))
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Column {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .background(Sky.copy(alpha = 0.15f), RoundedCornerShape(14.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("🌬️", fontSize = 24.sp)
+        }
+        Column(modifier = Modifier.weight(1f)) {
             Text(
-                text  = "✦ AI Insight",
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontWeight    = FontWeight.Bold,
-                    letterSpacing = 0.1.sp,
-                ),
-                color = Lav,
-            )
-            Spacer(Modifier.height(7.dp))
-            Text(
-                text  = insight,
-                style = MaterialTheme.typography.bodySmall.copy(lineHeight = 20.sp),
+                text  = "2-min breathing reset",
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = CardText,
             )
-        }
-    }
-}
-
-// ── Mood-Usage Heatmap ─────────────────────────────────────────────────────────
-
-@Composable
-fun MoodUsageHeatmap(cells: List<HeatmapCell>) {
-    Box(
-        modifier = Modifier
-            .padding(horizontal = 22.dp, vertical = 7.dp)
-            .fillMaxWidth()
-            .background(CardBg, RoundedCornerShape(18.dp))
-            .padding(15.dp),
-    ) {
-        Column {
             Text(
-                text  = "MOOD-USAGE HEATMAP",
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontWeight    = FontWeight.Bold,
-                    letterSpacing = 0.08.sp,
-                ),
+                text  = "Clear your head anytime",
+                style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Spacer(Modifier.height(3.dp))
+        }
+        Box(
+            modifier = Modifier
+                .background(Sky.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
+                .border(1.dp, Sky.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                .clickable { onClick() }
+                .padding(horizontal = 10.dp, vertical = 5.dp),
+        ) {
             Text(
-                text  = "Screen time vs emotional state · This week",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                text  = "Start →",
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                color = Sky,
             )
-            Spacer(Modifier.height(12.dp))
-
-            val days = listOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY,
-                DayOfWeek.THURSDAY, DayOfWeek.FRIDAY, DayOfWeek.SATURDAY, DayOfWeek.SUNDAY)
-            val categories = listOf("Social", "Work", "Stream")
-            val dayLabels = listOf("M", "T", "W", "T", "F", "S", "S")
-
-            // Header row
-            Row(modifier = Modifier.fillMaxWidth()) {
-                Spacer(Modifier.width(44.dp))
-                dayLabels.forEach { d ->
-                    Text(
-                        text      = d,
-                        modifier  = Modifier.weight(1f),
-                        textAlign = TextAlign.Center,
-                        style     = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, fontWeight = FontWeight.SemiBold),
-                        color     = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(4.dp))
-
-            // Data rows
-            categories.forEachIndexed { rowIdx, category ->
-                val backendCategory = when (rowIdx) {
-                    0 -> "SOCIAL"; 1 -> "WORK"; else -> "STREAMING"
-                }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text     = category,
-                        style    = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                        color    = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        modifier = Modifier.width(44.dp),
-                    )
-                    days.forEach { dow ->
-                        val cell = cells.find { it.category == backendCategory && it.dayOfWeek == dow }
-                        val score = cell?.impactScore ?: 0f
-                        val opacity = (abs(score) * 2f).coerceIn(0.35f, 0.85f)
-                        val color = when {
-                            score < -0.4f -> Blush.copy(alpha = opacity)
-                            score >  0.3f -> Sage.copy(alpha = opacity)
-                            else          -> Amber.copy(alpha = opacity)
-                        }
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(horizontal = 2.dp)
-                                .height(20.dp)
-                                .background(color, RoundedCornerShape(5.dp)),
-                        )
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(10.dp))
-
-            // Legend
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Text(
-                    text  = "Impact:",
-                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                )
-                LegendDot(Blush.copy(alpha = 0.7f), "Negative")
-                LegendDot(Sage.copy(alpha = 0.6f), "Positive")
-                LegendDot(Amber.copy(alpha = 0.5f), "Neutral")
-            }
         }
     }
 }
 
-@Composable
-private fun LegendDot(color: Color, label: String) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-        Box(modifier = Modifier.size(10.dp).background(color, RoundedCornerShape(3.dp)))
-        Text(
-            text  = label,
-            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-        )
-    }
-}
-
-// ── Trigger App Card ───────────────────────────────────────────────────────────
+// ── App Limit Card ────────────────────────────────────────────────────────────
 
 @Composable
-fun TriggerAppCard(
-    app: AppUsageWithImpact,
-    onLimit: () -> Unit,
-    onWatch: () -> Unit,
+private fun AppLimitCard(
+    limit: ManualAppLimit,
+    todayUsageMs: Long?,
+    hasPermission: Boolean,
+    onEdit: () -> Unit,
+    onRemove: () -> Unit,
 ) {
-    val log    = app.log
-    val score  = log.impactScore
-    val totalMin = log.durationMs / 60_000
-    val maxDailyMs = 4 * 60 * 60 * 1000L // 4h as 100%
-    val progress = (log.durationMs.toFloat() / maxDailyMs).coerceIn(0f, 1f)
+    val usageMs  = todayUsageMs ?: 0L
+    val limitMs  = limit.limitMinutes * 60_000L
+    val progress = if (limitMs > 0) (usageMs.toFloat() / limitMs).coerceIn(0f, 1f) else 0f
+    val usedMin  = usageMs / 60_000
+    val remMin   = (limit.limitMinutes - usedMin).coerceAtLeast(0)
+    val nearLimit = progress >= 0.8f
 
-    val borderColor = when {
-        score < -0.6f -> Blush.copy(alpha = 0.2f)
-        score < -0.2f -> Amber.copy(alpha = 0.15f)
-        else          -> MaterialTheme.colorScheme.outline
-    }
     val barColor = when {
-        score < -0.6f -> Blush
-        score < -0.2f -> Amber
-        else          -> Sage
-    }
-    val impactLabel = when {
-        score < -0.6f -> "High negative impact"
-        score < -0.2f -> "Moderate impact"
-        else          -> "Low impact"
-    }
-    val buttonLabel = when {
-        score < -0.6f -> "Limit"
-        score < -0.2f -> "Limit"
-        else          -> "Watch"
-    }
-    val buttonColor = when {
-        score < -0.6f -> Blush
-        score < -0.2f -> Amber
-        else          -> Sage
+        progress < 0.5f -> Sage
+        progress < 0.8f -> Amber
+        else            -> Blush
     }
 
-    Row(
+    var menuExpanded by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    val iconDrawable = remember(limit.packageName) {
+        try { context.packageManager.getApplicationIcon(limit.packageName) }
+        catch (_: Exception) { null }
+    }
+
+    Column(
         modifier = Modifier
             .padding(horizontal = 22.dp, vertical = 4.dp)
             .fillMaxWidth()
             .background(CardBg, RoundedCornerShape(16.dp))
-            .border(1.dp, borderColor, RoundedCornerShape(16.dp))
-            .padding(13.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(11.dp),
+            .border(1.dp, Color(0xFF252D44), RoundedCornerShape(16.dp))
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        // App icon placeholder (coloured box)
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .background(
-                    brush = Brush.linearGradient(listOf(barColor.copy(0.6f), barColor.copy(0.3f))),
-                    shape = RoundedCornerShape(12.dp),
-                ),
-            contentAlignment = Alignment.Center,
+        // ROW 1: icon + name + limit badge + 3-dot menu
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Text(text = log.appLabel.take(1), fontSize = 18.sp, color = Color.White)
+            // App icon
+            if (iconDrawable != null) {
+                val bmp = remember(iconDrawable) { iconDrawable.toBitmap().asImageBitmap() }
+                Image(
+                    bitmap             = bmp,
+                    contentDescription = limit.appLabel,
+                    modifier           = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(10.dp)),
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(CardBg, RoundedCornerShape(10.dp))
+                        .border(1.dp, Color(0xFF2A3450), RoundedCornerShape(10.dp)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("📱", fontSize = 20.sp)
+                }
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text  = limit.appLabel,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = CardText,
+                )
+                Text(
+                    text  = "${limit.limitMinutes} min/day",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Gold,
+                )
+            }
+
+            // 3-dot menu
+            Box {
+                Text(
+                    text     = "⋮",
+                    fontSize = 20.sp,
+                    color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.clickable { menuExpanded = true },
+                )
+                DropdownMenu(
+                    expanded         = menuExpanded,
+                    onDismissRequest = { menuExpanded = false },
+                ) {
+                    DropdownMenuItem(
+                        text    = { Text("Edit") },
+                        onClick = { menuExpanded = false; onEdit() },
+                    )
+                    DropdownMenuItem(
+                        text    = { Text("Remove", color = Blush) },
+                        onClick = { menuExpanded = false; onRemove() },
+                    )
+                }
+            }
         }
 
-        Column(modifier = Modifier.weight(1f)) {
+        // ROW 2: usage progress
+        if (!hasPermission) {
             Text(
-                text  = log.appLabel,
-                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                color = CardText,
+                text  = "Enable screen time to track usage",
+                style = MaterialTheme.typography.labelSmall.copy(fontStyle = FontStyle.Italic),
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
             )
+        } else {
             Text(
-                text  = "${totalMin}min today · $impactLabel",
+                text  = "Today: ${usedMin}min used of ${limit.limitMinutes}min",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Spacer(Modifier.height(5.dp))
             LinearProgressIndicator(
-                progress  = { progress },
-                modifier  = Modifier
+                progress   = { progress },
+                modifier   = Modifier
                     .fillMaxWidth()
-                    .height(4.dp)
-                    .clip(RoundedCornerShape(2.dp)),
+                    .height(5.dp)
+                    .clip(RoundedCornerShape(3.dp)),
                 color      = barColor,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant,
             )
         }
 
-        Box(
-            modifier = Modifier
-                .background(buttonColor.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
-                .border(1.dp, buttonColor.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
-                .clickable { if (buttonLabel == "Watch") onWatch() else onLimit() }
-                .padding(horizontal = 11.dp, vertical = 5.dp),
-        ) {
-            Text(
-                text  = buttonLabel,
-                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                color = buttonColor,
-            )
+        // ROW 3: auto-block badge
+        if (limit.autoBlock) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text("🚫", fontSize = 11.sp)
+                Text(
+                    text  = "Auto-block enabled",
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                    color = Sage.copy(alpha = 0.75f),
+                )
+            }
+        }
+
+        // ROW 4: near-limit warning
+        if (nearLimit && hasPermission) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Blush.copy(alpha = 0.12f), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 10.dp, vertical = 5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+            ) {
+                Text("⚠️", fontSize = 11.sp)
+                Text(
+                    text  = "${remMin}min remaining today",
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = Blush,
+                )
+            }
         }
     }
 }
 
-// ── Permission empty state ─────────────────────────────────────────────────────
+// ── Permission empty state ────────────────────────────────────────────────────
 
 @Composable
 fun PermissionEmptyState(onEnable: () -> Unit) {
@@ -486,7 +491,7 @@ fun PermissionEmptyState(onEnable: () -> Unit) {
             textAlign = TextAlign.Center,
         )
         Text(
-            text      = "Reflekt needs usage access to show your screen time and discover which apps affect your mood. Your data stays 100% on-device.",
+            text      = "Reflekt needs usage access to show your screen time. Your data stays 100% on-device.",
             style     = MaterialTheme.typography.bodySmall.copy(lineHeight = 20.sp),
             color     = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
