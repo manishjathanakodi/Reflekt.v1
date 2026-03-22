@@ -34,6 +34,8 @@ import com.reflekt.journal.ui.screens.analytics.AnalyticsScreen
 import com.reflekt.journal.ui.screens.auth.AuthScreen
 import com.reflekt.journal.ui.screens.history.HistoryScreen
 import com.reflekt.journal.ui.screens.home.HomeScreen
+import com.reflekt.journal.ui.screens.journal.JournalChatScreen
+import com.reflekt.journal.ui.screens.journal.JournalChatViewModel
 import com.reflekt.journal.ui.screens.journal.JournalEntryScreen
 import com.reflekt.journal.ui.screens.journal.JournalViewModel
 import com.reflekt.journal.ui.screens.journal.PostJournalSaveScreen
@@ -65,6 +67,7 @@ object Routes {
     const val JOURNAL_NEW            = "journal/new"
     const val JOURNAL_ENTRY          = "journal/{entryId}"
     const val JOURNAL_SAVED          = "journal/saved"
+    const val JOURNAL_CHAT           = "journal/chat"
     const val HISTORY                = "history"
     const val ANALYTICS              = "analytics"
     const val HABITS                 = "habits"
@@ -155,10 +158,20 @@ fun ReflektBottomNav(currentRoute: String?, navController: NavHostController) {
                         .clip(androidx.compose.foundation.shape.RoundedCornerShape(13.dp))
                         .background(if (isActive) gold.copy(alpha = 0.15f) else Color.Transparent)
                         .clickable {
-                            navController.navigate(item.route) {
-                                popUpTo(Routes.HOME) { saveState = true }
-                                launchSingleTop = true
-                                restoreState    = true
+                            if (item.route == Routes.HOME) {
+                                // Pop everything including HOME, then navigate fresh.
+                                // Using inclusive=true guarantees HOME is always shown
+                                // regardless of what's on the back stack.
+                                navController.navigate(Routes.HOME) {
+                                    popUpTo(Routes.HOME) { inclusive = true }
+                                    launchSingleTop = true
+                                }
+                            } else {
+                                navController.navigate(item.route) {
+                                    popUpTo(Routes.HOME) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState    = true
+                                }
                             }
                         }
                         .padding(vertical = 5.dp, horizontal = 7.dp),
@@ -248,26 +261,31 @@ fun ReflektNavGraph(navController: NavHostController) {
             HomeScreen(navController)
         }
 
-        // 8. Journal — New entry (owns the shared JournalViewModel)
+        // 8. Journal — New entry (structured, owns the shared JournalViewModel)
         composable(Routes.JOURNAL_NEW) {
             JournalEntryScreen(navController)
         }
 
-        // 9. Journal — Existing entry
-        composable(
-            route     = Routes.JOURNAL_ENTRY,
-            arguments = listOf(navArgument("entryId") { type = NavType.StringType }),
-        ) {
-            Text("JournalEntryScreen placeholder")
+        // 8b. Journal — Chat mode (must be before JOURNAL_ENTRY to avoid route conflict)
+        composable(Routes.JOURNAL_CHAT) {
+            JournalChatScreen(navController)
         }
 
-        // 10. Journal — Post-save (shares JournalViewModel scoped to JOURNAL_NEW)
+        // 9. Journal — Post-save (shares JournalViewModel scoped to JOURNAL_NEW)
         composable(Routes.JOURNAL_SAVED) { entry ->
             val journalEntry = remember(entry) {
                 navController.getBackStackEntry(Routes.JOURNAL_NEW)
             }
             val viewModel: JournalViewModel = hiltViewModel(journalEntry)
             PostJournalSaveScreen(navController, viewModel)
+        }
+
+        // 10. Journal — Existing entry (view-only, must be after specific journal/* routes)
+        composable(
+            route     = Routes.JOURNAL_ENTRY,
+            arguments = listOf(navArgument("entryId") { type = NavType.StringType }),
+        ) {
+            Text("JournalEntryScreen placeholder")
         }
 
         // 11. History — optional moodFilter query param set by Analytics donut tap

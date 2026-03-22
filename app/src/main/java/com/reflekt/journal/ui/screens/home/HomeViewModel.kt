@@ -2,6 +2,8 @@ package com.reflekt.journal.ui.screens.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.reflekt.journal.ai.engine.JournalSessionStore
+import com.reflekt.journal.ai.engine.MoodTag
 import com.reflekt.journal.data.db.Habit
 import com.reflekt.journal.data.db.HabitDao
 import com.reflekt.journal.data.db.HabitLogDao
@@ -10,8 +12,10 @@ import com.reflekt.journal.data.db.GoalDao
 import com.reflekt.journal.data.db.TodoDao
 import com.reflekt.journal.data.db.UserProfileDao
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
@@ -31,6 +35,7 @@ class HomeViewModel @Inject constructor(
     private val todoDao: TodoDao,
     private val goalDao: GoalDao,
     private val userProfileDao: UserProfileDao,
+    private val sessionStore: JournalSessionStore,
 ) : ViewModel() {
 
     private val todayStr = LocalDate.now().toString()
@@ -40,8 +45,8 @@ class HomeViewModel @Inject constructor(
         .map { it.firstOrNull()?.name ?: "there" }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "there")
 
-    val recentEntries = journalEntryDao.getAll()
-        .map { it.take(5) }
+    val incompleteTodos: StateFlow<List<com.reflekt.journal.data.db.Todo>> = todoDao.getAll()
+        .map { todos -> todos.filter { !it.isCompleted && !it.isArchived }.take(8) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val todayHabits: StateFlow<List<HabitWithTodayStatus>> = habitDao.getAll()
@@ -75,6 +80,23 @@ class HomeViewModel @Inject constructor(
         val dayOfYear = LocalDate.now().dayOfYear
         emit(PROMPTS[dayOfYear % PROMPTS.size])
     }.stateIn(viewModelScope, SharingStarted.Eagerly, PROMPTS[0])
+
+    fun setPendingInitialMood(mood: MoodTag) {
+        sessionStore.pendingInitialMood = mood
+    }
+
+    fun completeTodo(todoId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val todo = todoDao.getById(todoId) ?: return@launch
+            todoDao.upsert(
+                todo.copy(
+                    isCompleted = true,
+                    completedAt = System.currentTimeMillis(),
+                    completedViaJournal = false,
+                ),
+            )
+        }
+    }
 
     private fun isHabitDueToday(habit: Habit, dow: DayOfWeek): Boolean = when (habit.frequency) {
         "DAILY" -> true

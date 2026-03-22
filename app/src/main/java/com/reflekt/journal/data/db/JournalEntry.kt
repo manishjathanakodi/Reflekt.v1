@@ -27,6 +27,18 @@ data class JournalEntry(
     val clinicalSummaryJson: String?,
     val totalScreenTimeMs: Long,
     val isDeleted: Boolean,
+    // ── Structured journal fields (null = entry was created via chat mode) ────
+    val initialMood: String? = null,
+    val closingMood: String? = null,
+    val affirmation: String? = null,
+    val gratitude1: String? = null,
+    val gratitude2: String? = null,
+    val gratitude3: String? = null,
+    val bestPartOfDay: String? = null,
+    val challenge: String? = null,
+    val tomorrowIntent: String? = null,
+    val freeWrite: String? = null,
+    val quote: String? = null,
 )
 
 /**

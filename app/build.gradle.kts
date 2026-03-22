@@ -52,6 +52,10 @@ android {
     buildFeatures {
         compose = true
     }
+
+    androidResources {
+        noCompress += listOf("gguf", "bin", "tflite")
+    }
 }
 
 

@@ -1,7 +1,5 @@
 package com.reflekt.journal.ui.screens.journal
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,17 +18,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -39,25 +31,32 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.reflekt.journal.ai.engine.MoodTag
-import com.reflekt.journal.data.db.Habit
-import com.reflekt.journal.data.db.Todo
-import com.reflekt.journal.ui.components.MoodBadge
 import com.reflekt.journal.ui.components.PrimaryButton
 import com.reflekt.journal.ui.navigation.Routes
-import kotlinx.coroutines.delay
 
-private val CardBg    = Color(0xFF1A2030)
-private val CardText  = Color(0xFFEEEAE2)
-private val Gold      = Color(0xFFC9A96E)
-private val SageGreen = Color(0xFF6FA880)
+private val SaveCardBg  = Color(0xFF1A2030)
+private val SaveInputBg = Color(0xFF1E2538)
+private val SaveGold    = Color(0xFFC9A96E)
+private val SaveSage    = Color(0xFF6FA880)
+private val SaveText    = Color(0xFFEEEAE2)
+private val SaveMuted   = Color(0x80EEEAE2)
+
+private fun moodEmoji(mood: MoodTag?) = when (mood) {
+    MoodTag.HAPPY   -> "😊"
+    MoodTag.SAD     -> "😔"
+    MoodTag.ANXIOUS -> "😰"
+    MoodTag.ANGRY   -> "😤"
+    MoodTag.NEUTRAL -> "😐"
+    MoodTag.FEAR    -> "😨"
+    null            -> "📝"
+}
 
 @Composable
 fun PostJournalSaveScreen(
     navController: NavController,
     viewModel: JournalViewModel = hiltViewModel(),
 ) {
-    val postSaveState by viewModel.postSaveState.collectAsState()
-    val state = postSaveState
+    val saveState by viewModel.structuredSaveState.collectAsState()
 
     Column(
         modifier = Modifier
@@ -68,34 +67,165 @@ fun PostJournalSaveScreen(
             .padding(horizontal = 24.dp, vertical = 32.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
+        // ── Title ──────────────────────────────────────────────────────────────
         Text(
-            "Session complete ✦",
+            "Entry saved ✦",
             style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.onBackground,
         )
 
-        if (state != null) {
-            EncouragementCard(message = state.encouragement)
+        if (saveState != null) {
+            val state = saveState!!
 
-            MoodSummaryRow(
-                mood = state.moodTag,
-                done = state.habitsDoneCount,
-                total = state.habitsTotalCount,
-            )
+            // ── Mood comparison card ───────────────────────────────────────────
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(SaveCardBg)
+                    .padding(16.dp),
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "MOOD SHIFT",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = SaveGold,
+                        letterSpacing = 0.1.sp,
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Text(moodEmoji(state.initialMood), fontSize = 32.sp)
+                            Text(
+                                state.initialMood?.name?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "Not set",
+                                fontSize = 10.sp,
+                                color = SaveMuted,
+                            )
+                        }
+                        Text(
+                            "  →  ",
+                            fontSize = 18.sp,
+                            color = SaveGold,
+                            modifier = Modifier.padding(horizontal = 12.dp),
+                        )
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Text(moodEmoji(state.closingMood), fontSize = 32.sp)
+                            Text(
+                                state.closingMood?.name?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "Not set",
+                                fontSize = 10.sp,
+                                color = SaveMuted,
+                            )
+                        }
+                    }
+                }
+            }
 
-            if (state.autoMarkedHabits.isNotEmpty() || state.autoMarkedTodos.isNotEmpty()) {
-                AutoMarkedList(
-                    habits = state.autoMarkedHabits,
-                    todos = state.autoMarkedTodos,
-                )
+            // ── Affirmation echo ───────────────────────────────────────────────
+            if (state.affirmation.isNotBlank()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(SaveSage.copy(alpha = 0.10f))
+                        .padding(16.dp),
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            "✦ YOUR AFFIRMATION",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = SaveSage,
+                            letterSpacing = 0.1.sp,
+                        )
+                        Text(
+                            state.affirmation,
+                            style = MaterialTheme.typography.bodyMedium.copy(fontStyle = FontStyle.Italic),
+                            color = SaveText,
+                        )
+                    }
+                }
+            }
+
+            // ── Section completion dots ────────────────────────────────────────
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(SaveCardBg)
+                    .padding(14.dp),
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "SECTIONS COMPLETED",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = SaveMuted,
+                        letterSpacing = 0.1.sp,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        repeat(8) { index ->
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(RoundedCornerShape(50))
+                                    .background(
+                                        if (index < state.filledSections) SaveGold
+                                        else SaveInputBg,
+                                    ),
+                            )
+                        }
+                        Spacer(Modifier.weight(1f))
+                        Text(
+                            "${state.filledSections} / 8",
+                            fontSize = 10.sp,
+                            color = SaveGold,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                }
+            }
+
+            // ── Quote ──────────────────────────────────────────────────────────
+            if (state.quote.isNotBlank()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(SaveInputBg)
+                        .padding(14.dp),
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            "✦ TODAY'S QUOTE",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = SaveGold,
+                            letterSpacing = 0.1.sp,
+                        )
+                        Text(
+                            state.quote,
+                            style = MaterialTheme.typography.bodySmall.copy(fontStyle = FontStyle.Italic),
+                            color = SaveMuted,
+                            lineHeight = 18.sp,
+                        )
+                    }
+                }
             }
         }
 
-        // Reminder placeholder
-        ReminderConfirmCard()
+        Spacer(Modifier.height(4.dp))
 
-        Spacer(Modifier.height(8.dp))
-
+        // ── Navigation buttons ─────────────────────────────────────────────────
         PrimaryButton(
             text = "Back to home",
             onClick = {
@@ -106,152 +236,10 @@ fun PostJournalSaveScreen(
         )
 
         PrimaryButton(
-            text = "View full entry",
-            onClick = {
-                navController.navigate(Routes.HISTORY)
-            },
+            text = "View history",
+            onClick = { navController.navigate(Routes.HISTORY) },
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
             contentColor = MaterialTheme.colorScheme.onSurface,
-        )
-    }
-}
-
-@Composable
-fun EncouragementCard(message: String) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(
-                Brush.linearGradient(
-                    listOf(SageGreen.copy(alpha = 0.15f), SageGreen.copy(alpha = 0.05f)),
-                ),
-            )
-            .padding(16.dp),
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(
-                "✦ REFLEKT",
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Bold,
-                color = SageGreen,
-                letterSpacing = 0.1.sp,
-            )
-            Text(
-                message,
-                style = MaterialTheme.typography.bodyMedium.copy(fontStyle = FontStyle.Italic),
-                color = CardText,
-            )
-        }
-    }
-}
-
-@Composable
-fun AutoMarkedList(habits: List<Habit>, todos: List<Todo>) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            "Auto-marked via journal",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
-        habits.forEachIndexed { i, habit ->
-            AnimatedItem(delayMs = i * 100L) {
-                AutoMarkedRow(
-                    emoji = habit.emoji,
-                    name = habit.title,
-                    streak = habit.streak + 1,
-                )
-            }
-        }
-        todos.forEachIndexed { i, todo ->
-            AnimatedItem(delayMs = (habits.size + i) * 100L) {
-                AutoMarkedRow(
-                    emoji = "✅",
-                    name = todo.title,
-                    streak = null,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun AnimatedItem(delayMs: Long, content: @Composable () -> Unit) {
-    val scale = remember { Animatable(0f) }
-    LaunchedEffect(Unit) {
-        delay(delayMs)
-        scale.animateTo(
-            targetValue = 1f,
-            animationSpec = spring(dampingRatio = 0.5f, stiffness = 400f),
-        )
-    }
-    Box(modifier = Modifier.scale(scale.value)) {
-        content()
-    }
-}
-
-@Composable
-private fun AutoMarkedRow(emoji: String, name: String, streak: Int?) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
-            .background(CardBg)
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Text(emoji, fontSize = 18.sp)
-        Column(modifier = Modifier.weight(1f)) {
-            Text(name, style = MaterialTheme.typography.labelMedium, color = CardText)
-            if (streak != null) {
-                Text(
-                    "Marked complete · $streak-day streak",
-                    fontSize = 10.sp,
-                    color = SageGreen,
-                )
-            } else {
-                Text("Marked complete", fontSize = 10.sp, color = SageGreen)
-            }
-        }
-    }
-}
-
-@Composable
-fun MoodSummaryRow(mood: MoodTag, done: Int, total: Int) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(CardBg)
-            .padding(12.dp),
-        horizontalArrangement = Arrangement.SpaceAround,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("Mood", fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            MoodBadge(mood)
-        }
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("Habits", fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("$done / $total", style = MaterialTheme.typography.titleMedium, color = CardText)
-        }
-    }
-}
-
-@Composable
-fun ReminderConfirmCard() {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFF1E2538))
-            .padding(12.dp),
-    ) {
-        Text(
-            "🔔 Reminders — set up in Settings",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }

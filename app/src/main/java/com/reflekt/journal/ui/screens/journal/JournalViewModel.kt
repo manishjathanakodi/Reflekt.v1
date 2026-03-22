@@ -1,26 +1,13 @@
 package com.reflekt.journal.ui.screens.journal
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.reflekt.journal.ai.accountability.AccountabilityEngine
-import com.reflekt.journal.ai.accountability.AccountabilityParser
-import com.reflekt.journal.ai.accountability.AccountabilitySnapshot
-import com.reflekt.journal.ai.engine.AiResponseParser
-import com.reflekt.journal.ai.engine.LlmEngine
+import com.reflekt.journal.ai.engine.JournalSessionStore
 import com.reflekt.journal.ai.engine.MoodTag
-import com.reflekt.journal.ai.prompt.PromptBuilder
-import com.reflekt.journal.ai.triage.TriageEngine
-import com.reflekt.journal.data.db.Goal
-import com.reflekt.journal.data.db.Habit
-import com.reflekt.journal.data.db.HabitLog
-import com.reflekt.journal.data.db.HabitLogDao
 import com.reflekt.journal.data.db.JournalEntry
 import com.reflekt.journal.data.db.JournalEntryDao
 import com.reflekt.journal.data.db.MoodLog
 import com.reflekt.journal.data.db.MoodLogDao
-import com.reflekt.journal.data.db.Todo
-import com.reflekt.journal.data.db.TodoDao
 import com.reflekt.journal.data.db.UserProfileDao
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -28,199 +15,151 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import java.time.LocalDate
 import java.util.UUID
 import javax.inject.Inject
 
-private const val TAG = "JournalViewModel"
-
-// ── Domain types ──────────────────────────────────────────────────────────────
-
-sealed class Message {
-    data class AiMessage(val text: String) : Message()
-    data class UserMessage(val text: String) : Message()
-}
-
-data class AnalysisResult(
-    val mood: MoodTag,
-    val trigger: String,
-    val habitDetected: String?,
-)
-
-data class PostSaveState(
-    val encouragement: String,
-    val autoMarkedHabits: List<Habit>,
-    val autoMarkedTodos: List<Todo>,
-    val moodTag: MoodTag,
-    val habitsDoneCount: Int,
-    val habitsTotalCount: Int,
-)
-
 sealed interface JournalNavEvent {
-    object NavigateToCrisis : JournalNavEvent
     object NavigateToSaved : JournalNavEvent
+    object NavigateToCrisis : JournalNavEvent
 }
 
-// ── ViewModel ─────────────────────────────────────────────────────────────────
+data class JournalFormState(
+    val initialMood: MoodTag? = null,
+    val affirmation: String = "",
+    val gratitude1: String = "",
+    val gratitude2: String = "",
+    val gratitude3: String = "",
+    val bestPartOfDay: String = "",
+    val challenge: String = "",
+    val freeWrite: String = "",
+    val tomorrowIntent: String = "",
+    val closingMood: MoodTag? = null,
+)
+
+data class StructuredSaveState(
+    val initialMood: MoodTag?,
+    val closingMood: MoodTag?,
+    val affirmation: String,
+    val quote: String,
+    val filledSections: Int,
+)
 
 @HiltViewModel
 class JournalViewModel @Inject constructor(
-    private val llmEngine: LlmEngine,
-    private val promptBuilder: PromptBuilder,
-    private val aiResponseParser: AiResponseParser,
-    private val triageEngine: TriageEngine,
-    private val accountabilityEngine: AccountabilityEngine,
-    private val accountabilityParser: AccountabilityParser,
     private val journalEntryDao: JournalEntryDao,
     private val moodLogDao: MoodLogDao,
-    private val habitLogDao: HabitLogDao,
-    private val todoDao: TodoDao,
     private val userProfileDao: UserProfileDao,
+    private val sessionStore: JournalSessionStore,
 ) : ViewModel() {
 
-    private val _conversation = MutableStateFlow<List<Message>>(emptyList())
-    val conversation: StateFlow<List<Message>> = _conversation.asStateFlow()
+    private val _formState = MutableStateFlow(JournalFormState())
+    val formState: StateFlow<JournalFormState> = _formState.asStateFlow()
 
-    private val _liveAnalysis = MutableStateFlow<AnalysisResult?>(null)
-    val liveAnalysis: StateFlow<AnalysisResult?> = _liveAnalysis.asStateFlow()
+    private val _isSaving = MutableStateFlow(false)
+    val isSaving: StateFlow<Boolean> = _isSaving.asStateFlow()
 
-    private val _isGenerating = MutableStateFlow(false)
-    val isGenerating: StateFlow<Boolean> = _isGenerating.asStateFlow()
-
-    private val _accountabilitySnapshot = MutableStateFlow<AccountabilitySnapshot?>(null)
-    val accountabilitySnapshot: StateFlow<AccountabilitySnapshot?> = _accountabilitySnapshot.asStateFlow()
-
-    private val _inputText = MutableStateFlow("")
-    val inputText: StateFlow<String> = _inputText.asStateFlow()
-
-    private val _postSaveState = MutableStateFlow<PostSaveState?>(null)
-    val postSaveState: StateFlow<PostSaveState?> = _postSaveState.asStateFlow()
+    private val _structuredSaveState = MutableStateFlow<StructuredSaveState?>(null)
+    val structuredSaveState: StateFlow<StructuredSaveState?> = _structuredSaveState.asStateFlow()
 
     private val _navEvent = Channel<JournalNavEvent>(Channel.BUFFERED)
     val navEvent = _navEvent.receiveAsFlow()
 
+    val selectedQuote: String
+
     init {
-        viewModelScope.launch(Dispatchers.IO) {
-            val profile = userProfileDao.getAll().first().firstOrNull()
-            val snapshot = accountabilityEngine.buildSnapshot(profile?.uid ?: "")
-            _accountabilitySnapshot.value = snapshot
-
-            // Open with AI greeting
-            val systemPrompt = profile?.let { promptBuilder.buildJournalSystemPrompt(it) } ?: ""
-            val accountContext = promptBuilder.buildAccountabilityContext(
-                snapshot.habitsDueToday, snapshot.overdueHabits, snapshot.todayTodos, snapshot.activeGoals,
-            )
-            _isGenerating.value = true
-            val greeting = llmEngine.generate("$systemPrompt\n$accountContext\nReflekt:")
-            _conversation.value = listOf(Message.AiMessage(greeting))
-            _isGenerating.value = false
+        val pendingMood = sessionStore.pendingInitialMood
+        sessionStore.pendingInitialMood = null
+        if (pendingMood != null) {
+            _formState.value = _formState.value.copy(initialMood = pendingMood)
         }
+        val dayOfYear = LocalDate.now().dayOfYear
+        selectedQuote = QUOTES[dayOfYear % QUOTES.size]
     }
 
-    fun onInputChanged(text: String) {
-        _inputText.value = text
+    fun onInitialMoodSelected(mood: MoodTag) {
+        _formState.value = _formState.value.copy(initialMood = mood)
     }
 
-    fun onSendMessage(text: String) {
-        if (text.isBlank() || _isGenerating.value) return
-        _inputText.value = ""
-        val userMsg = Message.UserMessage(text)
-        _conversation.value = _conversation.value + userMsg
+    fun onAffirmationChanged(text: String) {
+        _formState.value = _formState.value.copy(affirmation = text)
+    }
 
+    fun onGratitude1Changed(text: String) {
+        _formState.value = _formState.value.copy(gratitude1 = text)
+    }
+
+    fun onGratitude2Changed(text: String) {
+        _formState.value = _formState.value.copy(gratitude2 = text)
+    }
+
+    fun onGratitude3Changed(text: String) {
+        _formState.value = _formState.value.copy(gratitude3 = text)
+    }
+
+    fun onBestPartChanged(text: String) {
+        _formState.value = _formState.value.copy(bestPartOfDay = text)
+    }
+
+    fun onChallengeChanged(text: String) {
+        _formState.value = _formState.value.copy(challenge = text)
+    }
+
+    fun onFreeWriteChanged(text: String) {
+        _formState.value = _formState.value.copy(freeWrite = text)
+    }
+
+    fun onTomorrowIntentChanged(text: String) {
+        _formState.value = _formState.value.copy(tomorrowIntent = text)
+    }
+
+    fun onClosingMoodSelected(mood: MoodTag) {
+        _formState.value = _formState.value.copy(closingMood = mood)
+    }
+
+    fun onSave() {
+        if (_isSaving.value) return
         viewModelScope.launch(Dispatchers.IO) {
-            _isGenerating.value = true
+            _isSaving.value = true
             try {
-                val profile = userProfileDao.getAll().first().firstOrNull()
-                val snapshot = _accountabilitySnapshot.value
-                val systemPrompt = profile?.let { promptBuilder.buildJournalSystemPrompt(it) } ?: ""
-                val accountContext = snapshot?.let {
-                    promptBuilder.buildAccountabilityContext(
-                        it.habitsDueToday, it.overdueHabits, it.todayTodos, it.activeGoals,
-                    )
-                } ?: ""
-                val history = _conversation.value.dropLast(1).joinToString("\n") { msg ->
-                    when (msg) {
-                        is Message.AiMessage -> "Reflekt: ${msg.text}"
-                        is Message.UserMessage -> "User: ${msg.text}"
-                    }
-                }
-                val fullPrompt = "$systemPrompt\n$accountContext\n$history\nUser: $text\nReflekt:"
-                val response = llmEngine.generate(fullPrompt)
-                _conversation.value = _conversation.value + Message.AiMessage(response)
-
-                // Update live analysis from response
-                val parsed = aiResponseParser.parseJournalAnalysis(response)
-                if (parsed.summary.isNotBlank() || parsed.triageTier != 1) {
-                    _liveAnalysis.value = AnalysisResult(
-                        mood = parsed.mood,
-                        trigger = parsed.triggers.firstOrNull() ?: "",
-                        habitDetected = null,
-                    )
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "generate() failed", e)
-            } finally {
-                _isGenerating.value = false
-            }
-        }
-    }
-
-    fun onDone() {
-        viewModelScope.launch(Dispatchers.IO) {
-            _isGenerating.value = true
-            try {
-                val snapshot = _accountabilitySnapshot.value ?: AccountabilitySnapshot(
-                    emptyList(), emptyList(), emptyList(), emptyList(),
-                )
-                val rawText = buildRawText()
-                val transcript = buildTranscript()
-
-                // 1. Parse accountability
-                val accountabilityResult = accountabilityParser.parseTranscript(transcript, snapshot)
-
-                // 2. Evaluate triage tier
-                val lastAnalysis = _liveAnalysis.value
-                val journalAnalysis = com.reflekt.journal.ai.engine.JournalAnalysis(
-                    summary = "",
-                    mood = lastAnalysis?.mood ?: MoodTag.NEUTRAL,
-                    moodScore = 3.0f,
-                    triggers = if (lastAnalysis?.trigger?.isNotBlank() == true) listOf(lastAnalysis.trigger) else emptyList(),
-                    triageTier = 1,
-                )
-                val tier = triageEngine.evaluate(journalAnalysis, rawText)
-
-                // 3. Save JournalEntry
+                val form = _formState.value
+                val rawText = buildRawText(form)
+                val moodTag = form.closingMood ?: form.initialMood ?: MoodTag.NEUTRAL
+                val score = moodScore(moodTag)
+                val tier = computeTier(form, rawText)
+                val aiSummary = buildSummary(form)
                 val entryId = UUID.randomUUID().toString()
+
                 val entry = JournalEntry(
                     entryId = entryId,
                     timestamp = System.currentTimeMillis(),
                     rawText = rawText,
-                    conversationJson = Json.encodeToString(
-                        _conversation.value.map { msg ->
-                            when (msg) {
-                                is Message.AiMessage -> mapOf("role" to "ai", "content" to msg.text)
-                                is Message.UserMessage -> mapOf("role" to "user", "content" to msg.text)
-                            }
-                        },
-                    ),
-                    aiSummary = journalAnalysis.summary,
-                    moodTag = journalAnalysis.mood.name,
-                    moodScore = journalAnalysis.moodScore,
-                    triggersJson = Json.encodeToString(journalAnalysis.triggers),
+                    conversationJson = "[]",
+                    aiSummary = aiSummary,
+                    moodTag = moodTag.name,
+                    moodScore = score,
+                    triggersJson = "[]",
                     triageTier = tier,
                     clinicalSummaryJson = null,
                     totalScreenTimeMs = 0L,
                     isDeleted = false,
+                    initialMood = form.initialMood?.name,
+                    closingMood = form.closingMood?.name,
+                    affirmation = form.affirmation.ifBlank { null },
+                    gratitude1 = form.gratitude1.ifBlank { null },
+                    gratitude2 = form.gratitude2.ifBlank { null },
+                    gratitude3 = form.gratitude3.ifBlank { null },
+                    bestPartOfDay = form.bestPartOfDay.ifBlank { null },
+                    challenge = form.challenge.ifBlank { null },
+                    tomorrowIntent = form.tomorrowIntent.ifBlank { null },
+                    freeWrite = form.freeWrite.ifBlank { null },
+                    quote = selectedQuote,
                 )
                 journalEntryDao.insert(entry)
 
-                // 4. Save/update MoodLog for today — recalculate aggregate from all today's entries
+                // Update MoodLog for today
                 val todayStr = LocalDate.now().toString()
                 val existingLog = moodLogDao.getByDate(todayStr)
                 val dayStart = java.time.LocalDate.now()
@@ -229,99 +168,130 @@ class JournalViewModel @Inject constructor(
                 val todayEntries = journalEntryDao.getEntriesForDay(dayStart, dayEnd)
                 val avgScore = if (todayEntries.isNotEmpty())
                     todayEntries.map { it.moodScore }.average().toFloat()
-                else journalAnalysis.moodScore
+                else score
                 val dominantMoodStr = todayEntries.groupBy { it.moodTag }
-                    .maxByOrNull { it.value.size }?.key ?: journalAnalysis.mood.name
-                val primaryTrigger = todayEntries.flatMap { e ->
-                    try { Json.decodeFromString<List<String>>(e.triggersJson) }
-                    catch (_: Exception) { emptyList() }
-                }.groupingBy { it }.eachCount().maxByOrNull { it.value }?.key ?: ""
-                val moodLog = MoodLog(
-                    logId = existingLog?.logId ?: UUID.randomUUID().toString(),
-                    date = todayStr,
-                    moodScore = avgScore,
-                    dominantMood = dominantMoodStr,
-                    primaryTrigger = primaryTrigger,
-                    screenTimeMs = 0L,
-                    entryCount = todayEntries.size,
-                )
-                moodLogDao.upsert(moodLog)
-
-                // 5. Auto-mark completed habits
-                val autoMarkedHabits = mutableListOf<Habit>()
-                accountabilityResult.completedHabitIds.forEach { habitId ->
-                    val habit = snapshot.habitsDueToday.find { it.habitId == habitId }
-                        ?: snapshot.overdueHabits.find { it.habitId == habitId }
-                    val existingHabitLog = habitLogDao.getByHabitAndDate(habitId, todayStr)
-                    if (existingHabitLog == null) {
-                        habitLogDao.insert(
-                            HabitLog(
-                                logId = UUID.randomUUID().toString(),
-                                habitId = habitId,
-                                date = todayStr,
-                                status = "COMPLETED",
-                                completedViaJournal = true,
-                                note = null,
-                                moodAtCompletion = journalAnalysis.mood.name,
-                            ),
-                        )
-                    } else {
-                        habitLogDao.upsert(existingHabitLog.copy(status = "COMPLETED", completedViaJournal = true))
-                    }
-                    habit?.let { autoMarkedHabits.add(it) }
-                }
-
-                // 6. Auto-mark completed todos
-                val autoMarkedTodos = mutableListOf<Todo>()
-                accountabilityResult.completedTodoIds.forEach { todoId ->
-                    val todo = todoDao.getById(todoId)
-                    if (todo != null) {
-                        todoDao.upsert(todo.copy(
-                            isCompleted = true,
-                            completedAt = System.currentTimeMillis(),
-                            completedViaJournal = true,
-                        ))
-                        autoMarkedTodos.add(todo)
-                    }
-                }
-
-                // Set post-save state
-                _postSaveState.value = PostSaveState(
-                    encouragement = accountabilityResult.encouragement.ifBlank {
-                        "Great reflection session! Every entry is a step toward self-understanding."
-                    },
-                    autoMarkedHabits = autoMarkedHabits,
-                    autoMarkedTodos = autoMarkedTodos,
-                    moodTag = journalAnalysis.mood,
-                    habitsDoneCount = autoMarkedHabits.size,
-                    habitsTotalCount = snapshot.habitsDueToday.size,
+                    .maxByOrNull { it.value.size }?.key ?: moodTag.name
+                moodLogDao.upsert(
+                    MoodLog(
+                        logId = existingLog?.logId ?: UUID.randomUUID().toString(),
+                        date = todayStr,
+                        moodScore = avgScore,
+                        dominantMood = dominantMoodStr,
+                        primaryTrigger = "",
+                        screenTimeMs = 0L,
+                        entryCount = todayEntries.size,
+                    ),
                 )
 
-                // 7. Navigate
+                _structuredSaveState.value = StructuredSaveState(
+                    initialMood = form.initialMood,
+                    closingMood = form.closingMood,
+                    affirmation = form.affirmation,
+                    quote = selectedQuote,
+                    filledSections = countFilledSections(form),
+                )
+
                 if (tier == 3) {
                     _navEvent.send(JournalNavEvent.NavigateToCrisis)
                 } else {
                     _navEvent.send(JournalNavEvent.NavigateToSaved)
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "onDone() failed", e)
-                _navEvent.send(JournalNavEvent.NavigateToSaved)
             } finally {
-                _isGenerating.value = false
+                _isSaving.value = false
             }
         }
     }
 
-    private fun buildRawText(): String =
-        _conversation.value
-            .filterIsInstance<Message.UserMessage>()
-            .joinToString("\n") { it.text }
+    private fun countFilledSections(form: JournalFormState): Int {
+        var count = 0
+        if (form.initialMood != null) count++
+        if (form.affirmation.isNotBlank()) count++
+        if (form.gratitude1.isNotBlank() || form.gratitude2.isNotBlank() || form.gratitude3.isNotBlank()) count++
+        if (form.bestPartOfDay.isNotBlank()) count++
+        if (form.challenge.isNotBlank()) count++
+        if (form.freeWrite.isNotBlank()) count++
+        if (form.tomorrowIntent.isNotBlank()) count++
+        if (form.closingMood != null) count++
+        return count
+    }
 
-    private fun buildTranscript(): String =
-        _conversation.value.joinToString("\n") { msg ->
-            when (msg) {
-                is Message.AiMessage -> "Reflekt: ${msg.text}"
-                is Message.UserMessage -> "User: ${msg.text}"
+    private fun buildRawText(form: JournalFormState): String {
+        val parts = mutableListOf<String>()
+        form.initialMood?.let { parts.add("Opening mood: ${it.name.lowercase()}") }
+        if (form.affirmation.isNotBlank()) parts.add("Affirmation: ${form.affirmation}")
+        if (form.gratitude1.isNotBlank()) parts.add("Grateful for: ${form.gratitude1}")
+        if (form.gratitude2.isNotBlank()) parts.add("Grateful for: ${form.gratitude2}")
+        if (form.gratitude3.isNotBlank()) parts.add("Grateful for: ${form.gratitude3}")
+        if (form.bestPartOfDay.isNotBlank()) parts.add("Best part of today: ${form.bestPartOfDay}")
+        if (form.challenge.isNotBlank()) parts.add("Challenge: ${form.challenge}")
+        if (form.freeWrite.isNotBlank()) parts.add(form.freeWrite)
+        if (form.tomorrowIntent.isNotBlank()) parts.add("Tomorrow I intend to: ${form.tomorrowIntent}")
+        form.closingMood?.let { parts.add("Closing mood: ${it.name.lowercase()}") }
+        return parts.joinToString("\n\n")
+    }
+
+    private fun buildSummary(form: JournalFormState): String =
+        form.affirmation.ifBlank {
+            form.gratitude1.ifBlank {
+                form.bestPartOfDay.ifBlank {
+                    form.freeWrite.take(120).ifBlank { "" }
+                }
             }
         }
+
+    private fun computeTier(form: JournalFormState, rawText: String): Int {
+        val lower = rawText.lowercase()
+        val crisisKeywords = listOf(
+            "suicide", "kill myself", "end my life", "self-harm",
+            "hurt myself", "don't want to live", "want to die",
+        )
+        if (crisisKeywords.any { lower.contains(it) }) return 3
+        val distressed = setOf(MoodTag.SAD, MoodTag.FEAR, MoodTag.ANGRY, MoodTag.ANXIOUS)
+        if (form.closingMood in distressed) return 2
+        return 1
+    }
+
+    private fun moodScore(mood: MoodTag): Float = when (mood) {
+        MoodTag.HAPPY   -> 8.0f
+        MoodTag.NEUTRAL -> 5.0f
+        MoodTag.SAD     -> 3.0f
+        MoodTag.ANXIOUS -> 4.0f
+        MoodTag.ANGRY   -> 3.5f
+        MoodTag.FEAR    -> 2.5f
+    }
+
+    companion object {
+        val QUOTES = listOf(
+            "The present moment always will have been. — Simone Weil",
+            "You are enough, just as you are.",
+            "Small steps in the right direction are still steps forward.",
+            "Feelings are visitors. Let them come and go.",
+            "You don't have to be positive all the time.",
+            "Growth and comfort cannot coexist. — Ginni Rometty",
+            "Be kind to yourself — you are doing your best.",
+            "What you are looking for is already in you.",
+            "Healing is not linear.",
+            "Every day is a fresh start.",
+            "The bravest thing you can do is begin again.",
+            "You are worthy of the love you give others.",
+            "Rest is productive.",
+            "Clarity comes with kindness to yourself.",
+            "Your story isn't over yet.",
+            "Progress, not perfection.",
+            "You've survived 100% of your worst days so far.",
+            "Self-awareness is the beginning of growth.",
+            "It's okay to not have all the answers.",
+            "Your emotions are valid.",
+            "Difficult roads often lead to beautiful destinations.",
+            "Take it one breath at a time.",
+            "You are stronger than you think.",
+            "The mind is powerful — be gentle with it.",
+            "Gratitude turns what we have into enough.",
+            "Reflect. Grow. Repeat.",
+            "Every thought you write down loses a little of its power over you.",
+            "Vulnerability is not weakness — it's courage.",
+            "You matter. Your feelings matter.",
+            "Today I choose to begin.",
+        )
+    }
 }

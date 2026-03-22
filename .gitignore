@@ -13,3 +13,7 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Model files — too large for git
+app/src/main/assets/models/
+app/src/main/files/models/

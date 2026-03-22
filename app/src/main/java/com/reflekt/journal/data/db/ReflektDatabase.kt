@@ -20,7 +20,7 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         Goal::class,
         Resource::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 abstract class ReflektDatabase : RoomDatabase() {

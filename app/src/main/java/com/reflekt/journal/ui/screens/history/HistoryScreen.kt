@@ -551,34 +551,38 @@ fun EntryDetailBottomSheet(
                 MoodBadge(mood)
             }
 
-            // Read-only chat conversation
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                turns.forEach { turn ->
-                    val isAi = turn.role == "ai"
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = if (isAi) Arrangement.Start else Arrangement.End,
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth(0.85f)
-                                .clip(
-                                    RoundedCornerShape(
-                                        topStart = if (isAi) 4.dp else 14.dp,
-                                        topEnd = if (isAi) 14.dp else 4.dp,
-                                        bottomStart = 14.dp,
-                                        bottomEnd = 14.dp,
-                                    )
-                                )
-                                .background(if (isAi) Surface3 else Gold.copy(alpha = 0.2f))
-                                .padding(10.dp),
+            // Body: structured sections or chat replay
+            if (entry.initialMood != null) {
+                StructuredEntryBody(entry)
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    turns.forEach { turn ->
+                        val isAi = turn.role == "ai"
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = if (isAi) Arrangement.Start else Arrangement.End,
                         ) {
-                            Text(
-                                turn.content,
-                                fontSize = 12.sp,
-                                color = if (isAi) CardMuted else Gold,
-                                lineHeight = 18.sp,
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(0.85f)
+                                    .clip(
+                                        RoundedCornerShape(
+                                            topStart = if (isAi) 4.dp else 14.dp,
+                                            topEnd = if (isAi) 14.dp else 4.dp,
+                                            bottomStart = 14.dp,
+                                            bottomEnd = 14.dp,
+                                        ),
+                                    )
+                                    .background(if (isAi) Surface3 else Gold.copy(alpha = 0.2f))
+                                    .padding(10.dp),
+                            ) {
+                                Text(
+                                    turn.content,
+                                    fontSize = 12.sp,
+                                    color = if (isAi) CardMuted else Gold,
+                                    lineHeight = 18.sp,
+                                )
+                            }
                         }
                     }
                 }
@@ -684,4 +688,105 @@ fun EntryDetailBottomSheet(
             },
         )
     }
+}
+
+@Composable
+private fun StructuredEntryBody(entry: JournalEntry) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // Mood shift
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(moodEmojiForTag(entry.initialMood), fontSize = 28.sp)
+            Text("  →  ", fontSize = 14.sp, color = Gold)
+            Text(moodEmojiForTag(entry.closingMood), fontSize = 28.sp)
+        }
+
+        // Affirmation
+        if (!entry.affirmation.isNullOrBlank()) {
+            StructuredSection(label = "Affirmation", value = entry.affirmation!!)
+        }
+        // Gratitude
+        val gratitudes = listOfNotNull(entry.gratitude1, entry.gratitude2, entry.gratitude3)
+            .filter { it.isNotBlank() }
+        if (gratitudes.isNotEmpty()) {
+            StructuredSection(label = "Grateful for", value = gratitudes.joinToString("\n"))
+        }
+        // Best part
+        if (!entry.bestPartOfDay.isNullOrBlank()) {
+            StructuredSection(label = "Best part of today", value = entry.bestPartOfDay!!)
+        }
+        // Challenge
+        if (!entry.challenge.isNullOrBlank()) {
+            StructuredSection(label = "Challenge", value = entry.challenge!!)
+        }
+        // Free write
+        if (!entry.freeWrite.isNullOrBlank()) {
+            StructuredSection(label = "Free write", value = entry.freeWrite!!)
+        }
+        // Tomorrow
+        if (!entry.tomorrowIntent.isNullOrBlank()) {
+            StructuredSection(label = "Tomorrow I intend to", value = entry.tomorrowIntent!!)
+        }
+        // Quote
+        if (!entry.quote.isNullOrBlank()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Surface2)
+                    .padding(12.dp),
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        "✦ QUOTE",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Gold,
+                        letterSpacing = 0.1.sp,
+                    )
+                    Text(
+                        entry.quote!!,
+                        fontSize = 11.sp,
+                        color = CardMuted,
+                        lineHeight = 16.sp,
+                        fontStyle = FontStyle.Italic,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StructuredSection(label: String, value: String) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Surface3)
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(
+            label.uppercase(),
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+            color = CardMuted,
+            letterSpacing = 0.1.sp,
+        )
+        Text(value, fontSize = 12.sp, color = CardText, lineHeight = 18.sp)
+    }
+}
+
+private fun moodEmojiForTag(tag: String?): String = when (tag) {
+    "HAPPY"   -> "😊"
+    "SAD"     -> "😔"
+    "ANXIOUS" -> "😰"
+    "ANGRY"   -> "😤"
+    "NEUTRAL" -> "😐"
+    "FEAR"    -> "😨"
+    else      -> "📝"
 }

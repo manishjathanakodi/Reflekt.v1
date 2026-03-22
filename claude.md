@@ -19,8 +19,9 @@ Only background (#F0EBE1) and nav bar (#E8E1D4) change in light mode.
 Cards (#1A2030), inputs (#1E2538), chat bubbles → stay dark in both modes.
 Use darkColorScheme() as base for LightColorScheme too.
 
-## Current Phase
-Phase 10 — Polish & QA
+## New Feature
+Mood check-in popup on journal open and close.
+Guided journaling prompts — AI guides user, not just responds.
 
 ## Verification
 I build in Android Studio after each phase and report errors back.

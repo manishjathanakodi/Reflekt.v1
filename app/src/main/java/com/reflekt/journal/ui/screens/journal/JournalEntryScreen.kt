@@ -1,7 +1,5 @@
 package com.reflekt.journal.ui.screens.journal
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -12,22 +10,22 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -37,57 +35,50 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.reflekt.journal.ai.accountability.AccountabilitySnapshot
 import com.reflekt.journal.ai.engine.MoodTag
-import com.reflekt.journal.ui.components.LoadingDots
-import com.reflekt.journal.ui.components.MoodBadge
 import com.reflekt.journal.ui.navigation.Routes
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-// ── Colour tokens ─────────────────────────────────────────────────────────────
-private val CardBg    = Color(0xFF1A2030)
-private val InputBg   = Color(0xFF1E2538)
-private val AiBubbleBg = Color(0xFF1E2538)
-private val UserBubbleBg = Color(0xFFC9A96E)
-private val Gold      = Color(0xFFC9A96E)
-private val SageGreen = Color(0xFF6FA880)
-private val CardText  = Color(0xFFEEEAE2)
+// ── Colour tokens (always dark — per CLAUDE.md) ───────────────────────────────
+private val JCardBg   = Color(0xFF1A2030)
+private val JInputBg  = Color(0xFF1E2538)
+private val JGold     = Color(0xFFC9A96E)
+private val JSage     = Color(0xFF6FA880)
+private val JCardText = Color(0xFFEEEAE2)
+private val JMuted    = Color(0x80EEEAE2)
+
+private val MOOD_OPTIONS = listOf(
+    MoodTag.HAPPY   to "😊",
+    MoodTag.SAD     to "😔",
+    MoodTag.ANGRY   to "😤",
+    MoodTag.ANXIOUS to "😰",
+    MoodTag.NEUTRAL to "😐",
+    MoodTag.FEAR    to "😨",
+)
 
 @Composable
 fun JournalEntryScreen(
     navController: NavController,
     viewModel: JournalViewModel = hiltViewModel(),
 ) {
-    val conversation by viewModel.conversation.collectAsState()
-    val isGenerating by viewModel.isGenerating.collectAsState()
-    val liveAnalysis by viewModel.liveAnalysis.collectAsState()
-    val snapshot by viewModel.accountabilitySnapshot.collectAsState()
-    val inputText by viewModel.inputText.collectAsState()
-    val listState = rememberLazyListState()
+    val form       by viewModel.formState.collectAsState()
+    val isSaving   by viewModel.isSaving.collectAsState()
+    val filled     = countFilledSections(form)
 
-    // Auto-scroll to bottom on new messages
-    LaunchedEffect(conversation.size, isGenerating) {
-        if (conversation.isNotEmpty()) {
-            listState.animateScrollToItem(conversation.size - 1)
-        }
-    }
-
-    // Observe navigation events
     LaunchedEffect(Unit) {
         viewModel.navEvent.collect { event ->
             when (event) {
@@ -107,294 +98,326 @@ fun JournalEntryScreen(
             .navigationBarsPadding()
             .imePadding(),
     ) {
-        // Header
-        JournalScreenHeader(
+        // ── Sticky header ──────────────────────────────────────────────────────
+        StructuredHeader(
             onBack = { navController.popBackStack() },
-            onDone = { viewModel.onDone() },
+            onSave = { viewModel.onSave() },
+            filled = filled,
+            total = 8,
+            isSaving = isSaving,
         )
 
-        // Accountability preview
-        snapshot?.let {
-            AccountabilityPreviewCard(snapshot = it, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
-        }
-
-        // Chat
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.weight(1f).padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+        // ── Scrollable body ────────────────────────────────────────────────────
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            items(conversation) { msg ->
-                when (msg) {
-                    is Message.AiMessage -> AiBubble(msg.text)
-                    is Message.UserMessage -> UserBubble(msg.text)
-                }
-            }
-            if (isGenerating) {
-                item { TypingIndicatorBubble() }
-            }
-        }
+            Spacer(Modifier.height(4.dp))
 
-        // Live analysis card
-        AnimatedVisibility(visible = liveAnalysis != null, enter = fadeIn()) {
-            liveAnalysis?.let {
-                LiveAnalysisCard(
-                    analysis = it,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            // 1. Opening mood
+            SectionCard(label = "How are you feeling right now?") {
+                InlineMoodPicker(
+                    selected = form.initialMood,
+                    onSelect = viewModel::onInitialMoodSelected,
                 )
             }
-        }
 
-        // Input bar
-        MessageInputBar(
-            text = inputText,
-            onTextChange = { viewModel.onInputChanged(it) },
-            onSend = { viewModel.onSendMessage(inputText) },
-            enabled = !isGenerating,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-        )
+            // 2. Affirmation
+            SectionCard(label = "Today's affirmation") {
+                JournalTextField(
+                    value = form.affirmation,
+                    onValueChange = viewModel::onAffirmationChanged,
+                    placeholder = "I am...",
+                )
+            }
+
+            // 3–5. Gratitude
+            SectionCard(label = "Three things I'm grateful for") {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    JournalTextField(
+                        value = form.gratitude1,
+                        onValueChange = viewModel::onGratitude1Changed,
+                        placeholder = "1. I'm grateful for...",
+                    )
+                    JournalTextField(
+                        value = form.gratitude2,
+                        onValueChange = viewModel::onGratitude2Changed,
+                        placeholder = "2.",
+                    )
+                    JournalTextField(
+                        value = form.gratitude3,
+                        onValueChange = viewModel::onGratitude3Changed,
+                        placeholder = "3.",
+                    )
+                }
+            }
+
+            // 6. Best part of today
+            SectionCard(label = "Best part of today") {
+                JournalTextField(
+                    value = form.bestPartOfDay,
+                    onValueChange = viewModel::onBestPartChanged,
+                    placeholder = "The highlight was...",
+                )
+            }
+
+            // 7. Challenge
+            SectionCard(label = "One challenge I faced") {
+                JournalTextField(
+                    value = form.challenge,
+                    onValueChange = viewModel::onChallengeChanged,
+                    placeholder = "Something I found difficult...",
+                )
+            }
+
+            // 8. Free write
+            SectionCard(label = "Free write") {
+                JournalTextField(
+                    value = form.freeWrite,
+                    onValueChange = viewModel::onFreeWriteChanged,
+                    placeholder = "Let your thoughts flow...",
+                    minLines = 4,
+                )
+            }
+
+            // 9. Tomorrow intention
+            SectionCard(label = "Tomorrow, I intend to...") {
+                JournalTextField(
+                    value = form.tomorrowIntent,
+                    onValueChange = viewModel::onTomorrowIntentChanged,
+                    placeholder = "One thing I want to do or be...",
+                )
+            }
+
+            // 10. Closing mood
+            SectionCard(label = "How are you feeling now?") {
+                InlineMoodPicker(
+                    selected = form.closingMood,
+                    onSelect = viewModel::onClosingMoodSelected,
+                )
+            }
+
+            // Quote of the day (read-only)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(JInputBg)
+                    .padding(16.dp),
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        "✦ TODAY'S QUOTE",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = JGold,
+                        letterSpacing = 0.1.sp,
+                    )
+                    Text(
+                        viewModel.selectedQuote,
+                        style = MaterialTheme.typography.bodySmall.copy(fontStyle = FontStyle.Italic),
+                        color = JMuted,
+                        lineHeight = 18.sp,
+                    )
+                }
+            }
+        }
     }
 }
 
+// ── Sub-composables ───────────────────────────────────────────────────────────
+
 @Composable
-fun JournalScreenHeader(onBack: () -> Unit, onDone: () -> Unit) {
+private fun StructuredHeader(
+    onBack: () -> Unit,
+    onSave: () -> Unit,
+    filled: Int,
+    total: Int,
+    isSaving: Boolean,
+) {
     val today = LocalDate.now()
     val dateStr = today.format(DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.getDefault()))
 
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onBackground)
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                "Today's entry",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-            Text(dateStr, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        TextButton(onClick = onDone) {
-            Text("Done", color = Gold, fontWeight = FontWeight.SemiBold)
-        }
-    }
-}
-
-@Composable
-fun AccountabilityPreviewCard(snapshot: AccountabilitySnapshot, modifier: Modifier = Modifier) {
-    var expanded by remember { mutableStateOf(false) }
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(CardBg)
-            .clickable { expanded = !expanded }
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+            .background(MaterialTheme.colorScheme.background),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("Today's accountability", style = MaterialTheme.typography.labelMedium, color = CardText)
+            IconButton(onClick = onBack) {
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = MaterialTheme.colorScheme.onBackground,
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Today's journal",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+                Text(
+                    dateStr,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (isSaving) {
+                CircularProgressIndicator(
+                    modifier = Modifier
+                        .size(20.dp)
+                        .padding(end = 8.dp),
+                    color = JGold,
+                    strokeWidth = 2.dp,
+                )
+            } else {
+                TextButton(onClick = onSave) {
+                    Text("Save", color = JGold, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+
+        // Progress bar
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            LinearProgressIndicator(
+                progress = { if (total == 0) 0f else filled.toFloat() / total },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(3.dp)
+                    .clip(RoundedCornerShape(2.dp)),
+                color = JGold,
+                trackColor = JInputBg,
+                strokeCap = StrokeCap.Round,
+            )
             Text(
-                if (expanded) "Collapse ▲" else "Expand ▼",
+                "$filled / $total",
                 fontSize = 9.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = JGold,
+                fontWeight = FontWeight.SemiBold,
             )
         }
-        // Habit dots
-        Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-            snapshot.habitsDueToday.forEach {
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .clip(RoundedCornerShape(50))
-                        .background(SageGreen),
-                )
-            }
-            snapshot.overdueHabits.take(3).forEach {
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .clip(RoundedCornerShape(50))
-                        .background(Color(0xFFE8A84D)),
-                )
-            }
-        }
-        if (expanded) {
-            if (snapshot.habitsDueToday.isNotEmpty()) {
-                Text(
-                    "Due today: ${snapshot.habitsDueToday.joinToString(", ") { "${it.emoji} ${it.title}" }}",
-                    fontSize = 10.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            if (snapshot.todayTodos.isNotEmpty()) {
-                Text(
-                    "Todos: ${snapshot.todayTodos.take(3).joinToString(", ") { it.title }}",
-                    fontSize = 10.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
     }
 }
 
 @Composable
-fun AiBubble(text: String) {
+private fun SectionCard(label: String, content: @Composable () -> Unit) {
     Column(
-        modifier = Modifier.fillMaxWidth(0.85f),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Text(
-            "✦ REFLEKT AI",
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Bold,
-            color = Gold,
-            letterSpacing = 0.1.sp,
-        )
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(topStart = 0.dp, topEnd = 16.dp, bottomStart = 16.dp, bottomEnd = 16.dp))
-                .background(AiBubbleBg)
-                .padding(12.dp),
-        ) {
-            Text(text, style = MaterialTheme.typography.bodyMedium, color = CardText)
-        }
-    }
-}
-
-@Composable
-fun UserBubble(text: String) {
-    Box(
-        modifier = Modifier.fillMaxWidth(),
-        contentAlignment = Alignment.CenterEnd,
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(0.80f)
-                .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 0.dp, bottomStart = 16.dp, bottomEnd = 16.dp))
-                .background(UserBubbleBg)
-                .padding(12.dp),
-        ) {
-            Text(text, style = MaterialTheme.typography.bodyMedium, color = Color(0xFF1A1208))
-        }
-    }
-}
-
-@Composable
-private fun TypingIndicatorBubble() {
-    Column(
-        modifier = Modifier.fillMaxWidth(0.85f),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Text(
-            "✦ REFLEKT AI",
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Bold,
-            color = Gold,
-            letterSpacing = 0.1.sp,
-        )
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(topStart = 0.dp, topEnd = 16.dp, bottomStart = 16.dp, bottomEnd = 16.dp))
-                .background(AiBubbleBg)
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-        ) {
-            LoadingDots()
-        }
-    }
-}
-
-@Composable
-fun LiveAnalysisCard(analysis: AnalysisResult, modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(CardBg)
-            .padding(10.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        // Mood column
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            MoodBadge(analysis.mood)
-        }
-        // Trigger column
-        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f).padding(horizontal = 8.dp)) {
-            Text("Trigger", fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(
-                analysis.trigger.ifBlank { "—" },
-                fontSize = 10.sp,
-                color = CardText,
-                maxLines = 1,
-            )
-        }
-        // Habit detected column
-        if (analysis.habitDetected != null) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Auto ✓", fontSize = 9.sp, color = SageGreen)
-                Text(analysis.habitDetected, fontSize = 10.sp, color = SageGreen, maxLines = 1)
-            }
-        }
-    }
-}
-
-@Composable
-fun MessageInputBar(
-    text: String,
-    onTextChange: (String) -> Unit,
-    onSend: () -> Unit,
-    enabled: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(horizontal = 12.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .background(JCardBg)
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        TextField(
-            value = text,
-            onValueChange = onTextChange,
-            modifier = Modifier.weight(1f),
-            placeholder = {
-                Text(
-                    "Write what's on your mind…",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            },
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = Color.Transparent,
-                unfocusedContainerColor = Color.Transparent,
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent,
-                focusedTextColor = CardText,
-                unfocusedTextColor = CardText,
-                cursorColor = Gold,
-            ),
-            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-            maxLines = 4,
+        Text(
+            label,
+            style = MaterialTheme.typography.labelMedium,
+            color = JCardText,
         )
-        IconButton(
-            onClick = onSend,
-            enabled = enabled && text.isNotBlank(),
-        ) {
-            Icon(
-                Icons.AutoMirrored.Filled.Send,
-                contentDescription = "Send",
-                tint = if (enabled && text.isNotBlank()) Gold else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        content()
+    }
+}
+
+@Composable
+private fun InlineMoodPicker(selected: MoodTag?, onSelect: (MoodTag) -> Unit) {
+    val rows = MOOD_OPTIONS.chunked(3)
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        rows.forEach { row ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                row.forEach { (mood, emoji) ->
+                    val isSelected = selected == mood
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (isSelected) JGold.copy(alpha = 0.15f) else JInputBg)
+                            .border(
+                                width = if (isSelected) 1.5.dp else 1.dp,
+                                color = if (isSelected) JGold else Color.Transparent,
+                                shape = RoundedCornerShape(12.dp),
+                            )
+                            .clickable { onSelect(mood) }
+                            .padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(3.dp),
+                        ) {
+                            Text(emoji, fontSize = 20.sp)
+                            Text(
+                                mood.name.lowercase().replaceFirstChar { it.uppercase() },
+                                fontSize = 9.sp,
+                                color = if (isSelected) JGold else JMuted,
+                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
+}
+
+@Composable
+private fun JournalTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    minLines: Int = 1,
+) {
+    TextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = Modifier.fillMaxWidth(),
+        placeholder = { Text(placeholder, color = JMuted, fontSize = 13.sp) },
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = JInputBg,
+            unfocusedContainerColor = JInputBg,
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent,
+            focusedTextColor = JCardText,
+            unfocusedTextColor = JCardText,
+            cursorColor = JGold,
+        ),
+        shape = RoundedCornerShape(10.dp),
+        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+        minLines = minLines,
+        maxLines = if (minLines > 1) 10 else 4,
+        textStyle = MaterialTheme.typography.bodyMedium.copy(color = JCardText, fontSize = 13.sp),
+    )
+}
+
+// Counts how many of the 8 sections are filled
+private fun countFilledSections(form: JournalFormState): Int {
+    var count = 0
+    if (form.initialMood != null) count++
+    if (form.affirmation.isNotBlank()) count++
+    if (form.gratitude1.isNotBlank() || form.gratitude2.isNotBlank() || form.gratitude3.isNotBlank()) count++
+    if (form.bestPartOfDay.isNotBlank()) count++
+    if (form.challenge.isNotBlank()) count++
+    if (form.freeWrite.isNotBlank()) count++
+    if (form.tomorrowIntent.isNotBlank()) count++
+    if (form.closingMood != null) count++
+    return count
 }

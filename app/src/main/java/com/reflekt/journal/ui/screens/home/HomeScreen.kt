@@ -2,12 +2,11 @@ package com.reflekt.journal.ui.screens.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -29,6 +28,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,15 +43,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.reflekt.journal.ai.engine.MoodTag
-import com.reflekt.journal.data.db.JournalEntry
-import com.reflekt.journal.ui.components.AiTagBadge
-import com.reflekt.journal.ui.components.MoodBadge
-import com.reflekt.journal.ui.components.TriggerChip
+import com.reflekt.journal.data.db.Todo
+import com.reflekt.journal.ui.components.MoodCheckInDialog
 import com.reflekt.journal.ui.navigation.Routes
-import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -68,13 +65,30 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val userName by viewModel.userName.collectAsState()
-    val recentEntries by viewModel.recentEntries.collectAsState()
+    val incompleteTodos by viewModel.incompleteTodos.collectAsState()
     val todayHabits by viewModel.todayHabits.collectAsState()
     val streak by viewModel.journalStreak.collectAsState()
     val goalsCount by viewModel.activeGoalsCount.collectAsState()
     val overdueTodosCount by viewModel.overdueTodosCount.collectAsState()
     val lastEntryTier by viewModel.lastEntryTier.collectAsState()
     val todayPrompt by viewModel.todayPrompt.collectAsState()
+
+    var showMoodDialog by remember { mutableStateOf(false) }
+
+    if (showMoodDialog) {
+        MoodCheckInDialog(
+            isOpening = true,
+            onMoodSelected = { mood ->
+                viewModel.setPendingInitialMood(mood)
+                showMoodDialog = false
+                navController.navigate(Routes.JOURNAL_NEW)
+            },
+            onSkip = {
+                showMoodDialog = false
+                navController.navigate(Routes.JOURNAL_NEW)
+            },
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -120,9 +134,21 @@ fun HomeScreen(
         // ── Today prompt card ──────────────────────────────────────────────────
         TodayPromptCard(
             prompt = todayPrompt,
-            onClick = { navController.navigate(Routes.JOURNAL_NEW) },
-            modifier = Modifier.padding(horizontal = 22.dp).padding(bottom = 13.dp),
+            onClick = { showMoodDialog = true },
+            modifier = Modifier.padding(horizontal = 22.dp).padding(bottom = 4.dp),
         )
+        TextButton(
+            onClick = { navController.navigate(Routes.JOURNAL_CHAT) },
+            modifier = Modifier
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 9.dp),
+        ) {
+            Text(
+                "Prefer to talk it out? Try chat mode →",
+                fontSize = 11.sp,
+                color = Gold.copy(alpha = 0.7f),
+            )
+        }
 
         // ── Stat row ───────────────────────────────────────────────────────────
         StatRow(
@@ -139,19 +165,37 @@ fun HomeScreen(
             )
         }
 
-        // ── Recent entries ─────────────────────────────────────────────────────
-        if (recentEntries.isNotEmpty()) {
-            SectionHeader(
-                title = "Recent entries",
-                linkText = "See all",
-                onLinkClick = { navController.navigate(Routes.HISTORY) },
-                modifier = Modifier.padding(horizontal = 22.dp).padding(bottom = 9.dp),
-            )
-            recentEntries.forEach { entry ->
-                RecentEntryCard(
-                    entry = entry,
-                    onClick = { navController.navigate(Routes.journalEntry(entry.entryId)) },
-                    modifier = Modifier.padding(horizontal = 22.dp).padding(bottom = 9.dp),
+        // ── To-do list ─────────────────────────────────────────────────────────
+        SectionHeader(
+            title = "To-dos",
+            linkText = "See all",
+            onLinkClick = { navController.navigate(Routes.TODOS) },
+            modifier = Modifier.padding(horizontal = 22.dp).padding(bottom = 9.dp),
+        )
+        if (incompleteTodos.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = 22.dp)
+                    .padding(bottom = 9.dp)
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(CardBg)
+                    .padding(16.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    "All caught up! ✓",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        } else {
+            incompleteTodos.forEach { todo ->
+                HomeTodoCard(
+                    todo = todo,
+                    onClick = { navController.navigate(Routes.TODOS) },
+                    onComplete = { viewModel.completeTodo(todo.todoId) },
+                    modifier = Modifier.padding(horizontal = 22.dp).padding(bottom = 7.dp),
                 )
             }
         }
@@ -437,52 +481,62 @@ fun SectionHeader(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun RecentEntryCard(entry: JournalEntry, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val date = Instant.ofEpochMilli(entry.timestamp)
-        .atZone(ZoneId.systemDefault())
-        .toLocalDateTime()
-    val dateStr = date.format(DateTimeFormatter.ofPattern("MMM d · h:mm a", Locale.getDefault()))
-    val mood = try { MoodTag.valueOf(entry.moodTag) } catch (e: Exception) { MoodTag.NEUTRAL }
-    val triggers = try {
-        kotlinx.serialization.json.Json.decodeFromString<List<String>>(entry.triggersJson)
-    } catch (e: Exception) { emptyList() }
+fun HomeTodoCard(
+    todo: Todo,
+    onClick: () -> Unit,
+    onComplete: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val priorityColor = when (todo.priority) {
+        "HIGH"   -> Blush
+        "MEDIUM" -> Amber
+        else     -> SageGreen
+    }
+    val today = LocalDate.now().toString()
+    val isOverdue = todo.dueDate != null && todo.dueDate < today
 
-    Column(
+    Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(12.dp))
             .background(CardBg)
             .clickable(onClick = onClick)
-            .padding(13.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+        // Complete button — tappable circle
+        Box(
+            modifier = Modifier
+                .size(22.dp)
+                .clip(RoundedCornerShape(50))
+                .border(1.5.dp, priorityColor, RoundedCornerShape(50))
+                .clickable(onClick = onComplete),
+            contentAlignment = Alignment.Center,
         ) {
-            Text(dateStr, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            MoodBadge(mood)
+            // empty — becomes a filled checkmark on tap (item disappears from list)
         }
-        if (entry.aiSummary.isNotBlank()) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
-                entry.aiSummary,
-                fontSize = 11.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-                lineHeight = 16.sp,
+                todo.title,
+                style = MaterialTheme.typography.bodyMedium,
+                color = CardText,
+                maxLines = 1,
             )
-        }
-        if (triggers.isNotEmpty()) {
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                triggers.take(3).forEach { TriggerChip(it) }
-                if (entry.moodTag.isNotBlank()) AiTagBadge()
+            if (todo.dueDate != null) {
+                Text(
+                    if (isOverdue) "Overdue · ${todo.dueDate}" else "Due ${todo.dueDate}",
+                    fontSize = 10.sp,
+                    color = if (isOverdue) Blush else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
+        Text(
+            todo.priority.lowercase().replaceFirstChar { it.uppercase() },
+            fontSize = 9.sp,
+            color = priorityColor,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+        )
     }
 }
