@@ -45,7 +45,7 @@ fun ZeroCloudBadge(modifier: Modifier = Modifier) {
                     color = SageGreen,
                 )
                 Text(
-                    "Permissions are used only on-device. No data is transmitted externally. Ever.",
+                    "Permissions are used only on-device. No data is transmitted to servers.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

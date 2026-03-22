@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.reflekt.journal.ai.engine.MoodTag
 import com.reflekt.journal.data.db.Todo
 import com.reflekt.journal.ui.components.MoodCheckInDialog
 import com.reflekt.journal.ui.navigation.Routes
@@ -72,6 +73,7 @@ fun HomeScreen(
     val overdueTodosCount by viewModel.overdueTodosCount.collectAsState()
     val lastEntryTier by viewModel.lastEntryTier.collectAsState()
     val todayPrompt by viewModel.todayPrompt.collectAsState()
+    val avgMood     by viewModel.avgMood.collectAsState()
 
     var showMoodDialog by remember { mutableStateOf(false) }
 
@@ -154,6 +156,7 @@ fun HomeScreen(
         StatRow(
             streak = streak,
             goalsCount = goalsCount,
+            avgMood = avgMood,
             modifier = Modifier.padding(horizontal = 22.dp).padding(bottom = 13.dp),
         )
 
@@ -390,7 +393,15 @@ fun TodayPromptCard(prompt: String, onClick: () -> Unit, modifier: Modifier = Mo
 }
 
 @Composable
-fun StatRow(streak: Int, goalsCount: Int, modifier: Modifier = Modifier) {
+fun StatRow(streak: Int, goalsCount: Int, avgMood: MoodTag, modifier: Modifier = Modifier) {
+    val moodEmoji = when (avgMood) {
+        MoodTag.HAPPY   -> "😊"
+        MoodTag.SAD     -> "😔"
+        MoodTag.ANXIOUS -> "😰"
+        MoodTag.ANGRY   -> "😤"
+        MoodTag.NEUTRAL -> "😐"
+        MoodTag.FEAR    -> "😨"
+    }
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(7.dp),
@@ -406,7 +417,7 @@ fun StatRow(streak: Int, goalsCount: Int, modifier: Modifier = Modifier) {
             modifier = Modifier.weight(1f),
         )
         StatCard(
-            value = "😐",
+            value = moodEmoji,
             label = "Avg mood",
             valueColor = Lavender,
             modifier = Modifier.weight(1f),

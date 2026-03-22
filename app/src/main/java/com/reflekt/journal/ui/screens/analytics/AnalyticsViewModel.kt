@@ -181,10 +181,9 @@ class AnalyticsViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             _isGeneratingReport.value = true
             try {
-                val dist     = moodDistribution.value
-                val triggers = topTriggers.value
-                val prompt   = buildReportPrompt(dist, triggers)
-                val report   = llmEngine.generate(prompt)
+                val entries = filteredEntries(allEntries.value, Period.SEVEN_DAYS)
+                val dist    = moodDistribution.value
+                val report  = buildReportFromData(entries, dist)
                 _weeklyReport.value = report
                 context.setWeeklyReport(report)
             } catch (e: Exception) {
@@ -196,36 +195,44 @@ class AnalyticsViewModel @Inject constructor(
         }
     }
 
-    private fun buildReportPrompt(
-        dist: Map<MoodTag, Float>,
-        triggers: List<TriggerCount>,
+    private fun buildReportFromData(
+        entries: List<JournalEntry>,
+        moodDistribution: Map<MoodTag, Float>,
     ): String {
-        val entryCount = totalEntries.value
-        val avgScore = trendData.value.let { data ->
-            if (data.isEmpty()) 0f else data.map { it.moodScore }.average().toFloat()
+        val entryCount = entries.size
+        val dominantMood = moodDistribution
+            .maxByOrNull { it.value }?.key?.name
+            ?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "Neutral"
+        val avgScore = entries
+            .map { it.moodScore }
+            .average()
+            .let { if (it.isNaN()) 3.0 else it }
+        val scoreDesc = when {
+            avgScore >= 4.0 -> "a strong positive week"
+            avgScore >= 3.0 -> "a balanced week"
+            avgScore >= 2.0 -> "a challenging week"
+            else            -> "a difficult week"
         }
-        val moodDataSummary = dist.entries.joinToString(", ") { (mood, pct) ->
-            "${mood.name}: ${pct.toInt()}%"
-        }
-        val triggersData = triggers.take(5).joinToString(", ") { it.trigger }
-        return """
-You are writing a warm, personal weekly emotional wellness summary for a journaling app user.
+        val topTrigger = entries
+            .flatMap { entry ->
+                try {
+                    Json { ignoreUnknownKeys = true; isLenient = true }
+                        .decodeFromString<List<String>>(entry.triggersJson)
+                } catch (_: Exception) { emptyList() }
+            }
+            .groupingBy { it }
+            .eachCount()
+            .maxByOrNull { it.value }?.key
 
-Data for the past 7 days:
-- Journal entries written: $entryCount
-- Average mood score: ${"%.1f".format(avgScore)} out of 5.0
-- Mood breakdown: $moodDataSummary
-- Top emotional triggers: $triggersData
+        val triggerSentence = if (topTrigger != null)
+            "The most common theme in your entries was \"$topTrigger\"."
+        else
+            "Your entries covered a range of topics this week."
 
-Write a short wellness summary in plain English as if you are a supportive friend.
-Use second person ("you", "your"). Do not use first person ("I").
-Structure:
-1. One sentence capturing the week's emotional theme.
-2. Two sentences describing the mood patterns and what they might mean.
-3. One sentence about the most common trigger if any triggers are listed.
-4. One warm, encouraging closing sentence.
-
-IMPORTANT: Output only the plain text summary. Do NOT output JSON. Do NOT use bullet points or numbered lists. Do NOT include any labels or headers. Total length: 4-5 sentences.
-        """.trimIndent()
+        return "You had $scoreDesc with $entryCount journal ${if (entryCount == 1) "entry" else "entries"}. " +
+            "Your mood was predominantly $dominantMood this week. " +
+            "$triggerSentence " +
+            "The fact that you kept showing up to reflect is something to be proud of. " +
+            "Keep going — small consistent steps lead to big changes."
     }
 }

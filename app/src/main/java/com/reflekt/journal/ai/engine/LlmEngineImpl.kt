@@ -75,26 +75,41 @@ class LlmEngineImpl @Inject constructor(
         }
     }
 
+    private var stubTurnCount = 0
+
     private fun stubResponse(prompt: String): String = when {
         prompt.contains("completedHabitIds") -> STUB_ACCOUNTABILITY
-        prompt.contains("finished journaling") || prompt.contains("DONE_SIGNAL") -> STUB_JOURNAL_ANALYSIS
-        prompt.contains("weekly emotional wellness") -> STUB_WEEKLY_REPORT
+        prompt.contains("finished journaling") || prompt.contains("DONE_SIGNAL") ||
+            prompt.contains("output ONLY the JSON") -> {
+            stubTurnCount = 0
+            STUB_JOURNAL_ANALYSIS
+        }
         else -> generateStubResponse(prompt)
     }
 
     private fun generateStubResponse(prompt: String): String {
-        val responses = listOf(
-            "That's worth exploring. What do you think triggered that feeling?",
-            "I hear you. How long have you been feeling this way?",
-            "That makes sense. What part of your day affected you the most?",
-            "Thank you for sharing that. Is there anything specific you'd like to focus on today?",
-            "It sounds like you have a lot on your mind. What feels most important to talk about?",
-            "How did that make you feel in the moment?",
-            "What would make tomorrow feel better than today?",
-            "Is there anyone in your life you'd like to talk to about this?",
-        )
-        val index = prompt.length % responses.size
-        return responses[index]
+        // Reset on new conversation (greeting present means session start)
+        if (prompt.contains("What would you like to reflect on") ||
+            prompt.contains("Good morning") || prompt.contains("Good afternoon") ||
+            prompt.contains("Good evening") || prompt.contains("Still up") ||
+            stubTurnCount > 10
+        ) {
+            stubTurnCount = 0
+        }
+        val response = when (stubTurnCount) {
+            0    -> "That's a start. What's been on your mind most today?"
+            1    -> "Tell me more about that. How did it make you feel?"
+            2    -> "How long has this been weighing on you?"
+            3    -> "Did anything or anyone make it better or worse?"
+            4    -> "What do you think is the root cause of this feeling?"
+            5    -> "Is there something specific you wish had gone differently today?"
+            6    -> "What's one thing within your control that you could do about this?"
+            7    -> "How are you feeling right now compared to when you started writing?"
+            8    -> "Is there anything else you want to get off your chest before we wrap up?"
+            else -> "Take your time. What else is on your mind?"
+        }
+        stubTurnCount++
+        return response
     }
 
     companion object {

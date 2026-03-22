@@ -9,6 +9,7 @@ import com.reflekt.journal.data.db.HabitDao
 import com.reflekt.journal.data.db.HabitLogDao
 import com.reflekt.journal.data.db.JournalEntryDao
 import com.reflekt.journal.data.db.GoalDao
+import com.reflekt.journal.data.db.MoodLogDao
 import com.reflekt.journal.data.db.TodoDao
 import com.reflekt.journal.data.db.UserProfileDao
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -35,6 +36,7 @@ class HomeViewModel @Inject constructor(
     private val todoDao: TodoDao,
     private val goalDao: GoalDao,
     private val userProfileDao: UserProfileDao,
+    private val moodLogDao: MoodLogDao,
     private val sessionStore: JournalSessionStore,
 ) : ViewModel() {
 
@@ -75,6 +77,21 @@ class HomeViewModel @Inject constructor(
     val lastEntryTier: StateFlow<Int> = journalEntryDao.getAll()
         .map { it.firstOrNull()?.triageTier ?: 1 }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 1)
+
+    val avgMood: StateFlow<MoodTag> = moodLogDao.getLastNDays(7)
+        .map { logs ->
+            if (logs.isEmpty()) return@map MoodTag.NEUTRAL
+            logs.groupingBy { it.dominantMood }
+                .eachCount()
+                .maxByOrNull { it.value }
+                ?.key
+                ?.let { moodString ->
+                    try { MoodTag.valueOf(moodString) }
+                    catch (_: Exception) { MoodTag.NEUTRAL }
+                }
+                ?: MoodTag.NEUTRAL
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MoodTag.NEUTRAL)
 
     val todayPrompt: StateFlow<String> = kotlinx.coroutines.flow.flow {
         val dayOfYear = LocalDate.now().dayOfYear
